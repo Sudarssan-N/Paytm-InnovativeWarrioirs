@@ -12,6 +12,8 @@ export const INCOME_DOCUMENT_SCHEMA = {
     issuer: { type: 'string', description: 'Bank, payment app or tax form name' },
     period_from: { type: 'string', description: 'First date the statement covers, as written' },
     period_to: { type: 'string', description: 'Last date the statement covers, as written' },
+    opening_balance: { type: 'number', description: 'Opening balance of the statement in rupees, negative if overdrawn' },
+    closing_balance: { type: 'number', description: 'Closing balance of the statement in rupees, negative if overdrawn' },
     transactions: {
       type: 'array',
       description: 'Every transaction line on a bank statement, in order. Leave empty for other documents',
@@ -22,6 +24,7 @@ export const INCOME_DOCUMENT_SCHEMA = {
           description: { type: 'string', description: 'Narration or particulars, as written' },
           debit: { type: 'number', description: 'Withdrawal amount in rupees, or 0' },
           credit: { type: 'number', description: 'Deposit amount in rupees, or 0' },
+          balance: { type: 'number', description: 'Running balance after this line in rupees, negative if overdrawn' },
         },
       },
     },
@@ -59,6 +62,16 @@ function valid(year, month, day) {
   return `${year}-${pad(month)}-${pad(day)}`;
 }
 
+// A running balance can be overdrawn: "1,200.00 Dr" or -1200 is minus 1,200. Unreadable is null.
+export function parseBalance(value) {
+  if (typeof value === 'number') return Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
+  const text = String(value ?? '').trim();
+  if (!text) return null;
+  const n = Number(text.replace(/[₹,\s]|rs\.?|inr|cr|dr/gi, ''));
+  if (!Number.isFinite(n)) return null;
+  return Math.round((/dr\b/i.test(text) ? -Math.abs(n) : n) * 100) / 100;
+}
+
 // "₹1,02,443.00", "1,02,443.00 Cr", "-" → a number of rupees, or 0.
 export function parseRupees(value) {
   if (typeof value === 'number') return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : 0;
@@ -80,17 +93,19 @@ export function interpretIncomeDocument(read, { hash = 'unknown', name = 'docume
     const rows = Array.isArray(fields.transactions) ? fields.transactions : [];
     let unreadable = 0;
     const transactions = [];
-    for (const row of rows) {
+    // `line` is the row's place on the page, so a check never compares two rows that had an unread one between them.
+    rows.forEach((row, line) => {
       const date = parseStatementDate(row?.date);
       const credit = parseRupees(row?.credit), debit = parseRupees(row?.debit);
-      if (!date || (!credit && !debit) || credit > MAX_AMOUNT || debit > MAX_AMOUNT) { unreadable += 1; continue; }
+      if (!date || (!credit && !debit) || credit > MAX_AMOUNT || debit > MAX_AMOUNT) { unreadable += 1; return; }
       const description = String(row.description || '').slice(0, 120);
-      transactions.push({ date, description, credit, debit, stream: credit ? classifyCredit(description) : null, include: true });
-    }
+      transactions.push({ date, description, credit, debit, balance: parseBalance(row?.balance), line, stream: credit ? classifyCredit(description) : null, include: true });
+    });
     if (unreadable) base.problems.push(`${unreadable} lines could not be read and are left out.`);
     if (!transactions.length) base.problems.push('No transactions could be read on this statement.');
     const period = { from: parseStatementDate(fields.period_from), to: parseStatementDate(fields.period_to) };
-    return { ...base, transactions, period, usable: transactions.length > 0 };
+    const balances = { opening: parseBalance(fields.opening_balance), closing: parseBalance(fields.closing_balance) };
+    return { ...base, transactions, period, balances, unreadable, usable: transactions.length > 0 };
   }
   if (kind === 'payment_receipt') {
     const amount = parseRupees(fields.receipt_amount), date = parseStatementDate(fields.receipt_date);
@@ -103,7 +118,7 @@ export function interpretIncomeDocument(read, { hash = 'unknown', name = 'docume
     if (!annual) return { ...base, problems: [`The ${kind === 'gst_return' ? 'turnover' : 'income'} on this return could not be read.`], usable: false };
     const year = fields.assessment_year ? `AY ${fields.assessment_year}` : fields.financial_year ? `FY ${fields.financial_year}` : '';
     return {
-      ...base,
+      ...base, years: { assessment: fields.assessment_year || null, financial: fields.financial_year || null },
       declared: [{ kind: kind === 'gst_return' ? 'turnover' : 'income', annual, label: kind === 'gst_return' ? 'GST return' : 'income tax return', source: `${KIND_LABEL[kind]}${year ? `, ${year}` : ''}` }],
       usable: true,
     };

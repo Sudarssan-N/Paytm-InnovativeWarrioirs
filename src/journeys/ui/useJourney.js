@@ -1,12 +1,12 @@
 // The call loop: MITRA speaks, listens, hears the turn end, and answers. All the
 // reasoning is on the server; this hook only moves audio and text and keeps the
 // screen in step. Voice failures never end the journey: typing and tapping still work.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { recordUtterance, canRecord } from '../../engine/recorder.js';
 import { sarvamStreamUrl, transcribe, verifySpoken } from '../../engine/sarvam.js';
 import { isAssistantEcho, speak, stopSpeaking } from '../../engine/speech.js';
 import { scriptLanguage } from '../../engine/languageDetect.js';
-import { authHeaders } from './auth.js';
+import { authApi, authHeaders } from './auth.js';
 
 async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api/journey${path}`, {
@@ -214,6 +214,20 @@ export function useJourney({ modelOff, chaos, consumeChaos, handsFree, setVoiceN
     }
   }, [apply]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Linking a bank on the call. The statement lands as a card to check, like any paper.
+  const bankApi = useMemo(() => ({
+    banks: () => authApi('/bank/banks'),
+    start: (body) => postJourney(`/${sessionId.current}/bank/start`, body),
+    verify: (body) => postJourney(`/${sessionId.current}/bank/verify`, body),
+    fetch: async (body) => {
+      const turn = await postJourney(`/${sessionId.current}/bank/fetch`, body);
+      stopSpeaking();
+      addMessage({ from: 'customer', native: `Linked ${turn.card?.data?.docs?.[0]?.bank || 'my bank'}`, lang: null });
+      apply(turn);
+      return turn;
+    },
+  }), [apply]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const send = useCallback(async (text, { tapped = false, spoken = null } = {}) => {
     const words = String(text || '').trim();
     if (!words || !sessionId.current) return;
@@ -357,5 +371,5 @@ export function useJourney({ modelOff, chaos, consumeChaos, handsFree, setVoiceN
 
   useEffect(() => () => { live.current = false; clearInterval(watchTimer.current); recorder.current?.abort?.(); stopSpeaking(); traceTimers.current.forEach(clearTimeout); }, []);
 
-  return { readDocument, confirmDocument, readIncome, confirmIncome, checkCall, status, state, setState, messages, cards, chips, trace, secs, level, voiceOn, error, start, end, send, micPress, toggleVoice, watchPhone };
+  return { readDocument, confirmDocument, readIncome, confirmIncome, bankApi, checkCall, status, state, setState, messages, cards, chips, trace, secs, level, voiceOn, error, start, end, send, micPress, toggleVoice, watchPhone };
 }

@@ -29,6 +29,15 @@ const offerArg = { type: 'object', additionalProperties: false, properties: { of
 const noArgs = { type: 'object', additionalProperties: false, properties: {} };
 // The customer's own document, once they have confirmed what MITRA read from it.
 const offerFor = (ctx) => ctx.session.documentOffer || LOAN_OFFERS[ctx.args.offer_id || OFFER_ID];
+// A paper that had a warning when it was read keeps it on every answer worked out from it.
+const paperWarning = (checks = []) => {
+  if (!checks?.length) return '';
+  const one = checks.length === 1;
+  const what = one ? `your ${checks[0].kindLabel.toLowerCase()} ${checks[0].verdict === 'expired' ? 'is out of date' : 'had a warning when it was read'}` : `${checks.length} of your papers had warnings when they were read`;
+  return ` One warning stays with this: ${what}. A lender may reject ${one ? 'it' : 'them'}, and these figures may not be accurate.`;
+};
+const documentWarning = (offer) => (offer.fromDocument && offer.check && offer.check.verdict !== 'clean'
+  ? ` One warning about this paper: ${offer.check.headline.toLowerCase()}. The lender may not hold to these terms, and this explanation may not be accurate.` : '');
 // A shop's sales: pulled from its own Paytm account when connected, else the sample.
 const salesOf = (session) => session.paytm?.sales || MERCHANT_SALES;
 
@@ -166,9 +175,9 @@ export const TOOLS = {
       const full = `On this ${inr(r.principal)} loan, it shows ${pct(r.ratePct)} interest. With the ${inr(r.fees)} fee, the APR is ${pct(r.aprPct)}. You get ${inr(r.net)} and repay ${inr(r.totalRepay)}, at ${inr(r.emi)} a month.`;
       const exit = r.coolingOffDays ? `You can exit within ${r.coolingOffDays} days of signing, without penalty. Nothing is signed here.` : 'Nothing is signed here.';
       const statedApr = offer.statedApr != null && Math.abs(offer.statedApr - r.aprPct) > 0.25 ? offer.statedApr : null;
-      const aprNote = statedApr != null ? ` The page states an APR of ${pct(statedApr)}, but counting every charge on it I get ${pct(r.aprPct)}. A person should check that with the lender.` : '';
+      const aprNote = `${statedApr != null ? ` The page states an APR of ${pct(statedApr)}, but counting every charge on it I get ${pct(r.aprPct)}. A person should check that with the lender.` : ''}${documentWarning(offer)}`;
       const fitLine = r.fit && (papers
-        ? `With your existing EMI of ${inr(obligations)}, your EMIs would be ${share}% of the ${inr(income)} I count from your papers, which ${{ fits: 'fits comfortably', tight: 'is tight', stretch: 'is a stretch' }[r.fit.band]}.`
+        ? `With your existing EMI of ${inr(obligations)}, your EMIs would be ${share}% of the ${inr(income)} I count from your papers, which ${{ fits: 'fits comfortably', tight: 'is tight', stretch: 'is a stretch' }[r.fit.band]}.${paperWarning(papers.checks)}`
         : `The EMI of ${inr(r.emi)} is ${share}% of your ${inr(income)} income, which ${{ fits: 'fits comfortably', tight: 'is tight', stretch: 'is a stretch' }[r.fit.band]}.`);
       return {
         reply: fitLine && ctx.turn.resumedFrom
@@ -178,7 +187,7 @@ export const TOOLS = {
         replyHi: `इस पर ${pct(r.ratePct)} ब्याज दिखता है। ${inr(r.fees)} की फ़ीस जोड़ने पर असली सालाना लागत यानी APR ${pct(r.aprPct)} है। आपको ${inr(r.net)} मिलेंगे और ${r.months} महीनों में ${inr(r.totalRepay)} लौटाने होंगे। EMI ${inr(r.emi)} है। साइन करने के बाद ${r.coolingOffDays} दिन तक बिना पेनल्टी निकल सकते हैं।`,
         card: { type: 'loan', data: {
           ...r, income, sharePct: share, lender: offer.lender, product: offer.product, statedApr, fromDocument: Boolean(offer.fromDocument), otherCharges: offer.otherCharges,
-          incomeFromPapers: Boolean(papers), obligations, schedule: amortisation(offer.principal, offer.ratePct, offer.months), charges: chargesToWatch(offer),
+          incomeFromPapers: Boolean(papers), obligations, documentCheck: offer.fromDocument ? offer.check || null : null, paperChecks: papers?.checks || [], schedule: amortisation(offer.principal, offer.ratePct, offer.months), charges: chargesToWatch(offer),
         } },
         chips: ['Can I afford this loan?', 'What if I take it for 36 months?', 'Show me this loan as a game', 'Can I close the loan early without a penalty?', 'I will take this loan', 'Talk to a person'],
         passport: {
@@ -223,7 +232,7 @@ export const TOOLS = {
         { field: 'Income counted', value: `${inr(profile.counted)} a month`, source: 'Income engine', asOf: ctx.today },
       ];
       return {
-        reply: `${incomeLine(profile)} ${safe}${offerLine}${weakLine}${room}${history}${declaredLine(profile)}`,
+        reply: `${incomeLine(profile)} ${safe}${offerLine}${weakLine}${room}${history}${declaredLine(profile)}${paperWarning(profile.checks)}`,
         simple: `I count ${inr(profile.counted)} a month as your safe income. Keep all your EMIs under ${inr(profile.comfortableEmi + profile.existingEmi)} a month.`,
         card: affordabilityCard(profile, sim, maxLoan, offer),
         chips: ['What if I take it for 36 months?', 'What does this loan really cost?', 'Explain it more simply', 'Talk to a person'],

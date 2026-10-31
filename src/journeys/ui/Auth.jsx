@@ -28,6 +28,9 @@ const ICON = {
   shield: svg('M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4', 18),
   voice: svg('M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3', 18),
   receipt: svg('M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6', 18),
+  bank: svg('M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18', 22),
+  search: svg('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4', 18),
+  lock: svg('M6 11h12v9H6zM9 11V8a3 3 0 0 1 6 0v3', 18),
 };
 const WORK_CHOICES = [
   ['gig', 'Gig work', 'Delivery, driving or freelance'],
@@ -45,20 +48,20 @@ function Logo({ light }) {
 }
 
 // Four boxes for a PIN: typing moves on, backspace moves back, a paste fills all four.
-function PinInput({ value, onChange, label, autoFocus }) {
+function PinInput({ value, onChange, label, autoFocus, length = 4, secret = true }) {
   const refs = useRef([]);
-  const digits = value.padEnd(4, ' ').slice(0, 4).split('');
+  const digits = value.padEnd(length, ' ').slice(0, length).split('');
   const set = (index, digit) => {
     const next = digits.map((item, at) => (at === index ? digit : item)).join('').replace(/\s+$/, '');
     onChange(next.replace(/\s/g, ''));
   };
   return (
-    <fieldset className="a-pin">
+    <fieldset className={`a-pin ${length > 4 ? 'is-long' : ''}`}>
       <legend>{label}</legend>
       <div>
         {digits.map((digit, index) => (
           <input
-            key={index} ref={(el) => { refs.current[index] = el; }} type="password" inputMode="numeric" autoComplete="off" maxLength={1}
+            key={index} ref={(el) => { refs.current[index] = el; }} type={secret ? 'password' : 'text'} inputMode="numeric" autoComplete="off" maxLength={1}
             aria-label={`${label}, digit ${index + 1}`} className={digit.trim() ? 'is-filled' : ''} value={digit.trim()} autoFocus={autoFocus && index === 0}
             onChange={(event) => {
               const typed = event.target.value.replace(/\D/g, '').slice(-1);
@@ -76,11 +79,11 @@ function PinInput({ value, onChange, label, autoFocus }) {
               if (event.key === 'ArrowRight') refs.current[index + 1]?.focus();
             }}
             onPaste={(event) => {
-              const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+              const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, length);
               if (!pasted) return;
               event.preventDefault();
               onChange(pasted);
-              refs.current[Math.min(pasted.length, 3)]?.focus();
+              refs.current[Math.min(pasted.length, length - 1)]?.focus();
             }}
           />
         ))}
@@ -254,13 +257,174 @@ function AboutStep({ user, onNext }) {
   );
 }
 
+// ── linking a bank, the Account Aggregator way ──────────────────
+const LINK_STEPS = ['Bank', 'Consent', 'Verify', 'Accounts'];
+const TILE_TONES = ['#002970', '#0079a8', '#0a5c8a', '#1d4fa3'];
+
+const ONBOARDING_BANK_API = {
+  banks: () => authApi('/bank/banks'),
+  start: (body) => authApi('/bank/start', { method: 'POST', body }),
+  verify: (body) => authApi('/bank/verify', { method: 'POST', body }),
+  fetch: (body) => authApi('/bank/fetch', { method: 'POST', body }),
+};
+
+export function BankConnect({ user, onFetched, onBack, api = ONBOARDING_BANK_API, inCall = false }) {
+  const [step, setStep] = useState('pick');
+  const [banks, setBanks] = useState([]);
+  const [query, setQuery] = useState('');
+  const [bank, setBank] = useState(null);
+  const [link, setLink] = useState(null);
+  const [otp, setOtp] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [chosen, setChosen] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const fail = (message) => setError({ message, at: Date.now() });
+
+  useEffect(() => { api.banks().then((out) => setBanks(out.banks)).catch((problem) => fail(problem.message)); }, [api]);
+  const shown = banks.filter((item) => item.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const at = { pick: 0, consent: 1, otp: 2, accounts: 3, fetching: 3 }[step];
+  const call = async (fn) => { setBusy(true); setError(null); try { await fn(); } catch (problem) { fail(problem.message); } finally { setBusy(false); } };
+
+  const approve = () => call(async () => {
+    setLink(await api.start({ bankId: bank.id, consent: true }));
+    setOtp('');
+    setStep('otp');
+  });
+  const verify = () => call(async () => {
+    const out = await api.verify({ handle: link.handle, otp });
+    setAccounts(out.accounts);
+    setChosen(out.accounts.filter((item) => item.primary).map((item) => item.ref));
+    setStep('accounts');
+  });
+  const share = () => call(async () => {
+    setStep('fetching');
+    const [out] = await Promise.all([
+      api.fetch({ handle: link.handle, accounts: chosen }),
+      new Promise((resolve) => setTimeout(resolve, 1800)), // long enough to see where the data comes from
+    ]).catch((problem) => { setStep('accounts'); throw problem; });
+    onFetched(out);
+  });
+
+  const monogram = (item) => item.id.slice(0, 3).toUpperCase();
+  return (
+    <div className="a-step-body a-link-flow">
+      <div className="a-link-head">
+        <button type="button" className="a-icon-back" aria-label="Back" onClick={() => {
+          if (step === 'pick') onBack(); else if (step === 'consent') setStep('pick'); else if (step === 'otp') setStep('consent'); else if (step === 'accounts') setStep('otp');
+        }} disabled={step === 'fetching'}>{svg('M15 6l-6 6 6 6', 18)}</button>
+        <ol className="a-link-steps" aria-label="Linking your bank">
+          {LINK_STEPS.map((label, index) => <li key={label} className={index < at ? 'is-done' : index === at ? 'is-now' : ''}><i />{label}</li>)}
+        </ol>
+        <span className="a-sandbox">Sandbox</span>
+      </div>
+
+      <div className="a-link-body" key={step}>
+        {step === 'pick' && (
+          <>
+            <h2>Link your bank account</h2>
+            <p className="a-sub">Your statement comes straight from your bank through RBI’s Account Aggregator network. No uploads, no passwords shared with MITRA.</p>
+            <label className="a-search">{ICON.search}<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your bank" aria-label="Search your bank" /></label>
+            <div className="a-banks" role="radiogroup" aria-label="Your bank">
+              {shown.map((item, index) => (
+                <button key={item.id} type="button" role="radio" aria-checked={bank?.id === item.id} className={`a-bank ${bank?.id === item.id ? 'is-on' : ''}`} style={{ animationDelay: `${index * 25}ms` }} onClick={() => setBank(item)}>
+                  <i style={{ background: TILE_TONES[index % TILE_TONES.length] }}>{monogram(item)}</i>
+                  <span>{item.name}</span>
+                </button>
+              ))}
+              {!shown.length && banks.length > 0 && <p className="a-fine">No bank matches “{query}”. You can upload a statement instead.</p>}
+            </div>
+            <ErrorLine error={error} />
+            <div className="a-actions"><button type="button" className="a-btn" disabled={!bank} onClick={() => { setError(null); setStep('consent'); }}>Continue with {bank ? bank.name : 'your bank'}{ICON.arrow}</button></div>
+          </>
+        )}
+
+        {step === 'consent' && (
+          <>
+            <h2>Approve what MITRA can see</h2>
+            <p className="a-sub">This is the consent your bank will act on. It covers one purpose, and you can revoke it any time.</p>
+            <div className="a-consent-card">
+              <header><i>{ICON.bank}</i><span><b>{bank.name}</b><small>to MITRA, through an Account Aggregator</small></span></header>
+              <dl>
+                <div><dt>Purpose</dt><dd>Check what you can safely afford before a loan</dd></div>
+                <div><dt>Data</dt><dd>Account transactions and summary</dd></div>
+                <div><dt>Period</dt><dd>Last 6 months</dd></div>
+                <div><dt>How often</dt><dd>Once</dd></div>
+                <div><dt>Kept for</dt><dd>30 days, then deleted</dd></div>
+                <div><dt>Mobile</dt><dd>{user.phone || 'Your number registered with the bank'}</dd></div>
+              </dl>
+              <p>{ICON.lock}MITRA never sees your net-banking password, and cannot move money.</p>
+            </div>
+            <ErrorLine error={error} />
+            <div className="a-actions">
+              <button type="button" className="a-link" onClick={onBack}>{inCall ? 'Not now' : 'Upload papers instead'}</button>
+              <button type="button" className="a-btn" disabled={busy} onClick={approve}>{busy && <Spinner />}Approve and get OTP{!busy && ICON.arrow}</button>
+            </div>
+          </>
+        )}
+
+        {step === 'otp' && link && (
+          <>
+            <h2>Enter the code</h2>
+            <p className="a-sub">Sent to {link.sentTo || 'your mobile'}. It expires in {link.expiresInMinutes} minutes.</p>
+            <PinInput label="6-digit code" value={otp} onChange={setOtp} length={6} secret={false} autoFocus />
+            <div className="a-sandbox-otp">
+              <span><b>Sandbox:</b> no SMS is sent. Your code is <code>{link.sandboxOtp}</code>.</span>
+              <button type="button" className="a-link" onClick={() => setOtp(link.sandboxOtp)}>Fill it in</button>
+            </div>
+            <ErrorLine error={error} />
+            <div className="a-actions">
+              <button type="button" className="a-link" onClick={approve} disabled={busy}>Send a new code</button>
+              <button type="button" className="a-btn" disabled={busy || otp.length !== 6} onClick={verify}>{busy && <Spinner />}Verify{!busy && ICON.arrow}</button>
+            </div>
+          </>
+        )}
+
+        {step === 'accounts' && (
+          <>
+            <h2>Choose accounts to share</h2>
+            <p className="a-sub">{bank.name} found {accounts.length} {accounts.length === 1 ? 'account' : 'accounts'} for this number. Share the ones your earnings go into.</p>
+            <div className="a-accounts">
+              {accounts.map((account, index) => {
+                const on = chosen.includes(account.ref);
+                return (
+                  <label key={account.ref} className={`a-account ${on ? 'is-on' : ''}`} style={{ animationDelay: `${index * 80}ms` }}>
+                    <input type="checkbox" checked={on} onChange={() => setChosen((list) => (on ? list.filter((ref) => ref !== account.ref) : [...list, account.ref]))} />
+                    <i aria-hidden="true">{ICON.check}</i>
+                    <span><b>{account.type}</b><small>{bank.name} · {account.masked}</small></span>
+                    {account.primary && <em>Most used</em>}
+                  </label>
+                );
+              })}
+            </div>
+            <ErrorLine error={error} />
+            <div className="a-actions"><button type="button" className="a-btn" disabled={busy || !chosen.length} onClick={share}>Share statement{ICON.arrow}</button></div>
+          </>
+        )}
+
+        {step === 'fetching' && (
+          <div className="a-fetch" aria-live="polite">
+            <div className="a-fetch-line" aria-hidden="true">
+              <i className="is-bank">{ICON.bank}</i>
+              <span><b /><b /><b /><b /><b /></span>
+              <i className="is-mitra"><span className="a-logo-mark" /></i>
+            </div>
+            <h2>Fetching 6 months from {bank.name}…</h2>
+            <p className="a-sub">Encrypted from your bank to MITRA. You will check every line {inCall ? 'on the answer card' : 'next'}.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const READING = ['Opening your papers', 'Reading every line', 'Sorting payouts, sales and transfers', 'Checking the totals'];
 
-function PapersStep({ user, onNext, onSkip }) {
+function PapersStep({ user, onNext, onSkip, onBack }) {
   const [consent, setConsent] = useState(false);
   const [files, setFiles] = useState([]);
   const [drag, setDrag] = useState(false);
-  const [phase, setPhase] = useState('pick');
+  const [phase, setPhase] = useState('choose');
   const [read, setRead] = useState(null);
   const [tick, setTick] = useState(0);
   const [error, setError] = useState(null);
@@ -286,11 +450,33 @@ function PapersStep({ user, onNext, onSkip }) {
   const confirm = async (accept, edits) => {
     try {
       const out = await authApi('/papers/confirm', { method: 'POST', body: { accept, edits } });
-      if (!accept) { setPhase('pick'); setFiles([]); return fail('Nothing from those papers is used. You can try clearer copies, or skip for now.'); }
+      if (!accept) { setPhase('choose'); setFiles([]); return fail('Nothing from those lines is used. You can link another account, upload papers, or skip for now.'); }
       onNext(out.user);
     } catch (problem) { setPhase('review'); fail(problem.message); }
   };
 
+  if (phase === 'choose') {
+    return (
+      <div className="a-step-body">
+        <h2>Show MITRA what you earn</h2>
+        <p className="a-sub">No salary slip needed. Pick one way. Either way, you check every line before it is used.</p>
+        <div className="a-ways">
+          <button type="button" className="a-way is-main" onClick={() => { setError(null); setPhase('bank'); }}>
+            <i>{ICON.bank}</i>
+            <span><b>Link your bank account</b><small>About a minute. Your statement comes straight from your bank through an Account Aggregator.</small></span>
+            <em>Recommended</em>
+          </button>
+          <button type="button" className="a-way" style={{ animationDelay: '80ms' }} onClick={() => { setError(null); setPhase('pick'); }}>
+            <i>{ICON.upload}</i>
+            <span><b>Upload papers</b><small>Bank statements, UPI receipts, ITR or GST, as PDF or photos.</small></span>
+          </button>
+        </div>
+        <ErrorLine error={error} />
+        <div className="a-actions"><button type="button" className="a-link" onClick={onBack}>Back</button><button type="button" className="a-link" onClick={onSkip}>Skip for now</button></div>
+      </div>
+    );
+  }
+  if (phase === 'bank') return <BankConnect user={user} onBack={() => setPhase('choose')} onFetched={(out) => { setRead(out); setError(null); setPhase('review'); }} />;
   if (phase === 'reading') {
     return (
       <div className="a-step-body a-reading" aria-live="polite">
@@ -303,7 +489,7 @@ function PapersStep({ user, onNext, onSkip }) {
   if (phase === 'review') {
     return (
       <div className="a-step-body">
-        <h2>Check what MITRA read</h2>
+        <h2>{read.docs.some((doc) => doc.via === 'aa') ? 'Check what your bank shared' : 'Check what MITRA read'}</h2>
         <p className="a-sub">{read.line}</p>
         <ErrorLine error={error} />
         <div className="j-app a-embed"><div className="j-result"><IncomeReadCard data={read} onIncome={confirm} /></div></div>
@@ -344,7 +530,7 @@ function PapersStep({ user, onNext, onSkip }) {
       )}
       <ErrorLine error={error} />
       <div className="a-actions">
-        <button type="button" className="a-link" onClick={onSkip}>Skip for now</button>
+        <button type="button" className="a-link" onClick={() => setPhase('choose')}>Back</button>
         <button type="button" className="a-btn is-quiet" disabled={!consent} onClick={async () => { const sample = await sampleFiles(user.sample); setFiles(sample); readThem(sample); }}>Use sample papers</button>
         <button type="button" className="a-btn" disabled={!consent || !files.length} onClick={() => readThem(files)}>Read my papers{ICON.arrow}</button>
       </div>
@@ -365,9 +551,11 @@ function ReadyStep({ user, onStart }) {
         <div className="a-stats">
           <div><span>Income MITRA counts</span><b>{inr(counted)}</b><small>a month, from your weaker months</small></div>
           <div><span>A comfortable EMI</span><b>{inr(safe)}</b><small>a month{income.existingEmi ? `, after the ${inr(income.existingEmi)} you already pay` : ''}</small></div>
-          <div><span>Papers on file</span><b>{income.documents}</b><small>{income.monthCount ? `${income.monthCount} months, ${income.from} to ${income.to}` : 'from your tax return'}</small></div>
+          <div><span>Sources on file</span><b>{income.documents}</b><small>{income.monthCount ? `${income.monthCount} months, ${income.from} to ${income.to}` : 'from your tax return'}</small></div>
         </div>
-      ) : <p className="a-callout">No papers yet. You can share them on any call with the + button, and MITRA works out what you can afford there.</p>}
+      ) : null}
+      {income && user.banks?.length > 0 && <p className="a-linked">{ICON.bank}Linked: {user.banks.map((item) => `${item.bank} ••${item.account.slice(-4)}`).join(', ')}</p>}
+      {income ? null : <p className="a-callout">No papers yet. You can share them on any call with the + button, and MITRA works out what you can afford there.</p>}
       <div className="a-actions is-center"><button type="button" className="a-btn is-big" onClick={onStart}>Start your first call{ICON.arrow}</button></div>
     </div>
   );
@@ -403,10 +591,9 @@ function Onboarding({ user: start, onDone, onSignOut }) {
       <main className="a-stage">
         <div className={`a-step is-${dir}`} key={step}>
           {step === 1 && <AboutStep user={user} onNext={(next) => { setUser(next); go(2); }} />}
-          {step === 2 && <PapersStep user={user} onNext={(next) => { setUser(next); finish(); }} onSkip={finish} />}
+          {step === 2 && <PapersStep user={user} onNext={(next) => { setUser(next); finish(); }} onSkip={finish} onBack={() => go(1)} />}
           {step === 3 && <ReadyStep user={user} onStart={() => onDone(user)} />}
         </div>
-        {step === 2 && <button type="button" className="a-back" onClick={() => go(1)}>Back</button>}
       </main>
     </div>
   );
@@ -444,16 +631,21 @@ export default function AuthGate() {
     setPhase('signin');
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    const out = await authApi('/me').catch(() => null);
+    if (out) setUser(out.user);
+  }, []);
+
   const view = useMemo(() => {
     if (phase === 'loading') return <div className="a-shell a-loading" aria-busy="true"><Logo /><Spinner /></div>;
     if (phase === 'signin') return <SignIn onSignedIn={enter} />;
     if (phase === 'onboarding') return <Onboarding user={user} onDone={(next) => { setUser(next); setPhase('app'); }} onSignOut={signOut} />;
     return (
       <Suspense fallback={<div className="a-shell a-loading"><Logo /><Spinner /></div>}>
-        <div className="a-enter"><JourneyApp user={user} onSignOut={signOut} /></div>
+        <div className="a-enter"><JourneyApp user={user} onSignOut={signOut} onRefreshUser={refreshUser} /></div>
       </Suspense>
     );
-  }, [phase, user, enter, signOut]);
+  }, [phase, user, enter, signOut, refreshUser]);
 
   return <div key={phase} className="a-fade">{view}</div>;
 }

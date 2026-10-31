@@ -1,6 +1,6 @@
 /* Sign-in and onboarding. The same Paytm navy and cyan as the call, with motion that
    shows where you are: steps slide in the direction you move, choices pop when picked. */
-.a-shell {
+.a-shell, .a-vars {
   --a-bg: #f3f6fb; --a-surface: #fff; --a-line: #dfe6f1; --a-line-soft: #edf1f7;
   --a-navy: #002970; --a-deep: #00205a; --a-ink: #15264a; --a-soft: #5a6b8c;
   --a-cyan: #00baf2; --a-cyan-ink: #0079a8; --a-cyan-tint: #e5f7fe;
@@ -8,15 +8,16 @@
   --a-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --a-body: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', sans-serif;
   --a-ease: cubic-bezier(.2, .8, .2, 1);
-  height: 100dvh; overflow-y: auto; background: var(--a-bg); color: var(--a-ink); font-family: var(--a-body); font-size: 14px; line-height: 1.45;
+  color: var(--a-ink); font-family: var(--a-body); font-size: 14px; line-height: 1.45;
 }
-.a-shell *, .a-shell *::before, .a-shell *::after { box-sizing: border-box; }
+.a-shell { height: 100dvh; overflow-y: auto; background: var(--a-bg); }
+.a-shell *, .a-shell *::before, .a-shell *::after, .a-vars *, .a-vars *::before, .a-vars *::after { box-sizing: border-box; }
 .a-shell button { font: inherit; cursor: pointer; }
 .a-shell button:disabled { cursor: default; opacity: .55; }
 .a-shell :focus-visible { outline: 2px solid var(--a-cyan-ink); outline-offset: 2px; }
 .a-shell h1, .a-shell h2, .a-shell p, .a-shell ul, .a-shell ol { margin: 0; padding: 0; }
 .a-shell ul, .a-shell ol { list-style: none; }
-.a-shell fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.a-shell fieldset, .a-vars fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 
 @keyframes a-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes a-fwd { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
@@ -237,3 +238,104 @@
 
 /* The page around sign-in and onboarding: full width, scrolled inside the shell. */
 html:has(.a-shell), html:has(.a-shell) body, html:has(.a-shell) #root { display: block; width: 100%; min-width: 0; max-width: none; height: 100%; margin: 0; padding: 0; background: #f3f6fb; overflow: hidden; }
+
+/* ── two ways in: link a bank, or upload ── */
+.a-ways { display: grid; gap: 12px; }
+.a-way { position: relative; display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 18px; border: 1.5px solid var(--a-line); background: var(--a-surface); text-align: left; color: var(--a-ink); animation: a-in .45s var(--a-ease) both; transition: transform .18s ease, border-color .2s ease, box-shadow .2s ease; }
+.a-way:hover { transform: translateY(-2px); border-color: var(--a-cyan); box-shadow: 0 14px 28px rgb(0 41 112 / .12); }
+.a-way:active { transform: scale(.985); }
+.a-way > i { flex: none; width: 52px; height: 52px; border-radius: 15px; display: grid; place-items: center; background: var(--a-cyan-tint); color: var(--a-navy); transition: transform .3s var(--a-ease); }
+.a-way.is-main > i { background: var(--a-navy); color: var(--a-cyan); }
+.a-way:hover > i { transform: rotate(-5deg) scale(1.05); }
+.a-way b { display: block; font-family: var(--a-display); font-size: 18px; color: var(--a-navy); }
+.a-way small { display: block; color: var(--a-soft); font-size: 13px; margin-top: 2px; }
+.a-way em { position: absolute; top: -10px; right: 16px; font-style: normal; font-size: 11.5px; font-weight: 700; color: #06573a; background: var(--a-green-tint); border: 1px solid #b7e6cf; padding: 2px 10px; border-radius: 99px; }
+
+/* ── the bank link flow ── */
+.a-link-head { display: flex; align-items: center; gap: 12px; }
+.a-icon-back { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--a-bg); color: var(--a-navy); display: grid; place-items: center; transition: background-color .2s ease, transform .16s ease; }
+.a-icon-back:hover:not(:disabled) { background: var(--a-cyan-tint); transform: translateX(-2px); }
+.a-link-steps { flex: 1; display: flex; gap: 6px; }
+.a-link-steps li { flex: 1; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; color: var(--a-soft); }
+.a-link-steps li i { height: 4px; border-radius: 4px; background: var(--a-line); position: relative; overflow: hidden; }
+.a-link-steps li i::after { content: ''; position: absolute; inset: 0; background: var(--a-cyan); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--a-ease); }
+.a-link-steps li.is-done i::after, .a-link-steps li.is-now i::after { transform: scaleX(1); }
+.a-link-steps li.is-now { color: var(--a-navy); font-weight: 700; }
+.a-link-steps li.is-now i::after { background: var(--a-navy); }
+.a-sandbox { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #6f5200; background: #fff4d9; padding: 3px 9px; border-radius: 99px; }
+.a-link-body { display: flex; flex-direction: column; gap: 16px; animation: a-fwd .4s var(--a-ease) both; }
+.a-search { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--a-line); background: var(--a-surface); color: var(--a-soft); transition: border-color .2s ease, box-shadow .2s ease; }
+.a-search:focus-within { border-color: var(--a-cyan-ink); box-shadow: 0 0 0 4px rgb(0 186 242 / .18); }
+.a-search input { flex: 1; min-width: 0; border: 0; outline: none; font: inherit; font-size: 15px; color: var(--a-ink); background: transparent; }
+.a-banks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 330px; overflow-y: auto; padding: 2px; }
+.a-bank { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 13px; border: 1.5px solid var(--a-line); background: var(--a-surface); text-align: left; color: var(--a-ink); font-weight: 600; font-size: 13px; line-height: 1.25; animation: a-in .35s var(--a-ease) both; transition: border-color .2s ease, background-color .2s ease, transform .16s ease; }
+.a-bank:hover { transform: translateY(-1px); border-color: var(--a-cyan); }
+.a-bank > i { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-style: normal; font-size: 11px; font-weight: 800; letter-spacing: .02em; color: #fff; transition: transform .3s var(--a-ease); }
+.a-bank.is-on { border-color: var(--a-navy); background: #f5f9ff; box-shadow: 0 0 0 3px var(--a-cyan-tint); }
+.a-bank.is-on > i { transform: scale(1.08); }
+.a-consent-card { border: 1.5px solid var(--a-line); border-radius: 18px; overflow: hidden; animation: a-in .4s var(--a-ease) both; }
+.a-consent-card header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--a-navy); color: #fff; }
+.a-consent-card header i { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: rgb(255 255 255 / .12); color: var(--a-cyan); }
+.a-consent-card header b { display: block; font-size: 16px; }
+.a-consent-card header small { color: #bfe8fa; }
+.a-consent-card dl { margin: 0; padding: 4px 16px; }
+.a-consent-card dl > div { display: grid; grid-template-columns: 110px 1fr; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--a-line-soft); animation: a-in .35s var(--a-ease) both; }
+.a-consent-card dl > div:nth-child(2) { animation-delay: .04s; }
+.a-consent-card dl > div:nth-child(3) { animation-delay: .08s; }
+.a-consent-card dl > div:nth-child(4) { animation-delay: .12s; }
+.a-consent-card dl > div:nth-child(5) { animation-delay: .16s; }
+.a-consent-card dl > div:nth-child(6) { animation-delay: .2s; }
+.a-consent-card dt { color: var(--a-soft); font-size: 13px; }
+.a-consent-card dd { margin: 0; font-weight: 600; font-size: 13.5px; }
+.a-consent-card > p { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--a-green-tint); color: #06573a; font-size: 13px; font-weight: 600; }
+.a-pin.is-long > div { gap: 8px; }
+.a-pin.is-long input { width: 48px; }
+.a-sandbox-otp { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding: 10px 14px; border-radius: 12px; background: #fff4d9; color: #6f5200; font-size: 13px; animation: a-in .4s var(--a-ease) .15s both; }
+.a-sandbox-otp code { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 700; font-size: 14px; letter-spacing: .12em; }
+.a-accounts { display: grid; gap: 10px; }
+.a-account { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; border: 1.5px solid var(--a-line); cursor: pointer; animation: a-in .4s var(--a-ease) both; transition: border-color .2s ease, background-color .2s ease; }
+.a-account input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.a-account:focus-within { outline: 2px solid var(--a-cyan-ink); outline-offset: 2px; }
+.a-account > i { flex: none; width: 24px; height: 24px; border-radius: 7px; border: 2px solid #b6c2d6; display: grid; place-items: center; color: transparent; transition: background-color .2s ease, border-color .2s ease, color .2s ease; }
+.a-account.is-on { border-color: var(--a-navy); background: #f5f9ff; }
+.a-account.is-on > i { background: var(--a-navy); border-color: var(--a-navy); color: #fff; animation: a-pop .3s var(--a-ease); }
+.a-account span { flex: 1; }
+.a-account b { display: block; color: var(--a-navy); }
+.a-account small { color: var(--a-soft); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; }
+.a-account em { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--a-cyan-ink); background: var(--a-cyan-tint); padding: 2px 9px; border-radius: 99px; }
+@keyframes a-flow { 0% { transform: translateX(-10px); opacity: 0; } 30%, 70% { opacity: 1; } 100% { transform: translateX(10px); opacity: 0; } }
+.a-fetch { display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; padding: 26px 0 10px; }
+.a-fetch-line { display: flex; align-items: center; gap: 14px; }
+.a-fetch-line > i { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; animation: a-pop .5s var(--a-ease) both; }
+.a-fetch-line > i.is-bank { background: var(--a-navy); color: var(--a-cyan); }
+.a-fetch-line > i.is-mitra { background: var(--a-cyan-tint); animation-delay: .15s; }
+.a-fetch-line > i.is-mitra .a-logo-mark { width: 38px; height: 38px; border-radius: 11px; }
+.a-fetch-line > span { display: flex; gap: 6px; }
+.a-fetch-line > span b { width: 8px; height: 8px; border-radius: 50%; background: var(--a-cyan); animation: a-flow 1.2s ease-in-out infinite; }
+.a-fetch-line > span b:nth-child(2) { animation-delay: .15s; }
+.a-fetch-line > span b:nth-child(3) { animation-delay: .3s; }
+.a-fetch-line > span b:nth-child(4) { animation-delay: .45s; }
+.a-fetch-line > span b:nth-child(5) { animation-delay: .6s; }
+.a-fetch h2 { font-size: 24px; }
+.a-linked { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 99px; background: var(--a-bg); color: var(--a-navy); font-weight: 600; font-size: 13px; animation: a-in .5s var(--a-ease) .75s both; }
+@media (max-width: 520px) {
+  .a-link-steps li { font-size: 0; }
+  .a-pin.is-long input { width: 42px; height: 50px; font-size: 20px; }
+  .a-consent-card dl > div { grid-template-columns: 90px 1fr; }
+}
+
+/* ── linking a bank on a call: the same flow, in a sheet over the app ── */
+.a-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: rgb(0 20 60 / .5); animation: a-fade .25s ease both; }
+.a-modal-card { position: relative; width: 100%; max-width: 700px; max-height: calc(100dvh - 40px); overflow-y: auto; background: var(--a-surface); border-radius: 24px; padding: 26px; box-shadow: 0 30px 60px rgb(0 20 60 / .3); animation: a-sheet .45s var(--a-ease) both; }
+@keyframes a-sheet { from { opacity: 0; transform: translateY(30px) scale(.98); } to { opacity: 1; transform: none; } }
+.a-vars button { font: inherit; cursor: pointer; }
+.a-vars button:disabled { cursor: default; opacity: .55; }
+.a-vars h2 { font-family: var(--a-display); font-weight: 800; font-size: 28px; line-height: 1.1; letter-spacing: -.015em; color: var(--a-navy); margin: 0; }
+@media (max-width: 520px) { .a-modal { padding: 0; align-items: end; } .a-modal-card { border-radius: 22px 22px 0 0; padding: 18px; max-height: 92dvh; } }
+@media (prefers-reduced-motion: reduce) { .a-modal, .a-modal-card, .a-vars * { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+/* Inside the app, its own button reset would win: these keep the sheet's colours. */
+.a-vars .a-btn { color: #fff; }
+.a-vars .a-btn.is-quiet { color: var(--a-navy); }
+.a-vars .a-link { color: var(--a-cyan-ink); }
+.a-vars .a-icon-back { color: var(--a-navy); }
+.a-vars .a-bank, .a-vars .a-way { color: var(--a-ink); }

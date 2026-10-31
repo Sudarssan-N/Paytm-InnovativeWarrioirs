@@ -1,0 +1,19 @@
+/* Document checks. Colours come from the journey tokens in journeys.css. */
+.dc { border-radius: 11px; padding: 9px 12px; margin: 6px 0 8px; font-size: 13px; border: 1px solid transparent; }
+.dc p { margin: 0; }
+.dc-head { display: flex; align-items: center; gap: 7px; }
+.dc-icon { width: 18px; height: 18px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; }
+.dc-ok { background: var(--j-green-tint); color: #06573a; }
+.dc-ok .dc-icon { background: var(--j-green); }
+.dc-warn { background: var(--j-amber-tint); color: var(--j-amber-ink); }
+.dc-warn .dc-icon { background: var(--j-amber-ink); }
+.dc-bad { background: var(--j-red-tint); color: #8e1c13; border-color: rgb(207 46 33 / .25); }
+.dc-bad .dc-icon { background: var(--j-red); }
+.dc-warning { margin-top: 4px !important; font-weight: 600; }
+.dc-flags { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
+.dc-flags li.is-low { opacity: .85; }
+.dc-passed { margin-top: 6px; font-size: 12px; }
+.dc-passed summary { cursor: pointer; font-weight: 600; }
+.dc-passed ul { margin: 4px 0 0; padding-left: 18px; }
+.dc-foot { margin-top: 6px !important; font-size: 11.5px; opacity: .9; }
+.dc-note p { margin-top: 3px; }

@@ -30,6 +30,7 @@ npm run preflight        # checks every stage on the real services
 | Feature | What it does | Built on |
 |---|---|---|
 | **Loan Clarity** | Reads bank statements, UPI receipts and ITR or GST returns, adds up every income stream, and counts weak months, so the EMI fits a slow month. Every line is shown back to untick or correct. Sliders show each month's cash flow under any amount and term | Sarvam Vision, deterministic income engine |
+| **Document checks** | Every uploaded paper is checked before its figures are used. The file: editing programs, changes after it was made or signed, re-saves. The figures: does the running balance add up line by line, are the dates possible and recent, is it in the customer's name, does a tax return agree with the bank. A warning says a lender may reject the paper and the analysis may not be accurate, and it stays on every answer worked out from it. It never blocks. Evals: `node scripts/eval-doc-check.mjs` | Deterministic, `engines/docCheck.js`, `server/documentForensics.mjs` |
 | **Read my loan papers** | Reads a customer's own KFS, as a PDF or a photo, reads it back, and checks the lender's arithmetic | Sarvam Vision |
 | **Promise Check** | Compares what an agent said on a recorded call with what the paper says, quote by quote | Saaras batch, Sarvam-105B |
 | **Karz Yatra** | A 2D game of the customer's own loan. EMI split, APR, bounces, prepaying, cover and scams | The same engines as the call |
@@ -90,4 +91,5 @@ Across all of them: onboarding asks for a fact once and consent per purpose, and
 - Nothing has been tested with real customers, and the voices in every test were synthetic.
 - No Paytm tool has been called on a real account yet: it needs a merchant sign-in. The business profile is tested against a local stand-in, and Paytm does not publish its response fields.
 - Rule details come from published summaries, not a legal review.
+- Document checks find signs, not proof. They are measured on forgeries made from the sample papers (`docs/evaluations/doc-check.json`), not on real ones. Only the bank or the tax portal can confirm that a paper is genuine.
 - There is no customer login, the expert desk's staff token is off in the demo, and the signing key is a local file. See [docs/PRODUCTION.md](docs/PRODUCTION.md).

@@ -7,7 +7,7 @@ import { getJourney, postJourney } from './useJourney.js';
 const PaytmPanel = React.lazy(() => import('./PaytmPanel.jsx'));
 const OpsPanel = React.lazy(() => import('./OpsPanel.jsx'));
 
-const KIND_LABEL = { stt: 'Heard', translate: 'Translate', route: 'Route', agent: 'Agent', consent: 'Consent', engine: 'Engine', policy: 'Policy', grounding: 'Fence', fence: 'Fence', seal: 'Seal', handoff: 'Person', disclosure: 'Disclose', voice: 'Voice', vision: 'Read' };
+const KIND_LABEL = { stt: 'Heard', translate: 'Translate', route: 'Route', agent: 'Agent', consent: 'Consent', engine: 'Engine', policy: 'Policy', grounding: 'Fence', fence: 'Fence', seal: 'Seal', handoff: 'Person', disclosure: 'Disclose', voice: 'Voice', vision: 'Read', check: 'Check' };
 
 function Trace({ trace }) {
   if (!trace.length) return <p className="j-empty">Start the call. Each step of every turn appears here: what was heard, which agent acted, what the engine computed, and what was sealed.</p>;

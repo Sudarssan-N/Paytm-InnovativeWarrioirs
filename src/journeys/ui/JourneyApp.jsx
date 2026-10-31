@@ -6,6 +6,7 @@ import { ResultCard } from './cards.jsx';
 import TrustPanel from './TrustPanel.jsx';
 import { postRomanise, useJourney } from './useJourney.js';
 import { sampleFiles } from './auth.js';
+import { BankConnect } from './Auth.jsx';
 import { setAiStatus } from '../../engine/aiTransport.js';
 import { loadAiStatus } from '../../engine/api.js';
 import './journeys.css';
@@ -115,6 +116,7 @@ const Icon = {
   shield: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4" /></svg>,
   cover: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-4.5-7-11a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 6.5-7 11-7 11z" /></svg>,
   claim: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4h6M8 4H5v17h14V4h-3M8 11h8M8 15h5" /></svg>,
+  bank: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 10l9-6 9 6M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18" /></svg>,
   shop: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6" /></svg>,
 };
 
@@ -180,7 +182,7 @@ function DemoControls({ handsFree, setHandsFree, modelOff, setModelOff, chaos, s
 }
 
 // Who is signed in, and the way out.
-function AccountMenu({ user, onSignOut }) {
+function AccountMenu({ user, onSignOut, onLinkBank }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const ref = useDismiss(open, close);
@@ -199,10 +201,12 @@ function AccountMenu({ user, onSignOut }) {
             <b>{user.name}</b>
             {user.phone && <span>{user.phone}</span>}
             {user.workLabel && <span>{user.workLabel}{user.city ? `, ${user.city}` : ''}</span>}
+            {user.banks?.length > 0 && <span>Bank linked: {user.banks.map((item) => `${item.bank} ••${item.account.slice(-4)}`).join(', ')}</span>}
             {user.income
               ? <p className="j-account-income">Income papers on file: <b>₹{user.income.counted.toLocaleString('en-IN')}</b> a month counted, under consent until {user.consent?.expiresOn}.</p>
               : !user.demo && <p className="j-account-income">No income papers yet. Share them on a call with the + button.</p>}
           </div>
+          <button type="button" className="j-switch-row" onClick={() => { close(); onLinkBank(); }}><span><b>{user.banks?.length ? 'Link another bank account' : 'Link a bank account'}</b><small>Through an Account Aggregator, with your consent</small></span></button>
           <button type="button" className="j-switch-row" onClick={onSignOut}><span><b>Sign out</b><small>{user.demo ? 'Back to the sign-in screen' : 'Your account and papers stay saved'}</small></span></button>
         </div>
       )}
@@ -211,7 +215,7 @@ function AccountMenu({ user, onSignOut }) {
 }
 
 // Everything the caller can hand to MITRA, in one sheet instead of a row of buttons.
-function ShareSheet({ journey, customerId, sampleSet, onClose, onNote }) {
+function ShareSheet({ journey, customerId, sampleSet, onClose, onNote, onBank }) {
   const { status, send } = journey;
   const busy = status === 'thinking';
   const done = (action) => async (...args) => { onClose(); await action(...args); };
@@ -239,6 +243,11 @@ function ShareSheet({ journey, customerId, sampleSet, onClose, onNote }) {
           <h3>Share with MITRA</h3>
           <button type="button" className="j-icon-btn" aria-label="Close" onClick={onClose}>{Icon.close}</button>
         </header>
+        <button type="button" className="j-share-bank" onClick={() => { onClose(); onBank(); }}>
+          <i>{Icon.bank}</i>
+          <span><b>Link your bank account</b><small>6 months of statement, straight from your bank, with your consent</small></span>
+          <em>Sandbox</em>
+        </button>
         <div className="j-sheet-grid">
           {tiles.map((tile, index) => (
             <div key={tile.title} className="j-share-tile" style={{ animationDelay: `${60 + index * 50}ms` }}>
@@ -258,7 +267,7 @@ function ShareSheet({ journey, customerId, sampleSet, onClose, onNote }) {
   );
 }
 
-function Phone({ journey, customerId, sampleSet, onStart, avatar, onAvatar, faces, phoneReady, onNote }) {
+function Phone({ journey, customerId, sampleSet, onStart, avatar, onAvatar, faces, phoneReady, onNote, onBank }) {
   const { status, state, messages, secs, level, voiceOn, chips, send, micPress, toggleVoice, end } = journey;
   const [typed, setTyped] = useState('');
   const [captions, setCaptions] = useState(true);
@@ -366,7 +375,7 @@ function Phone({ journey, customerId, sampleSet, onStart, avatar, onAvatar, face
           : <button type="button" className={`j-composer-mic ${listening ? 'is-on' : ''}`} aria-label={listening ? 'Finish speaking' : 'Speak'} disabled={status === 'thinking' || status === 'transcribing'} onClick={micPress}>{Icon.mic}</button>}
       </form>
 
-      {sharing && <ShareSheet journey={journey} customerId={customerId} sampleSet={sampleSet} onClose={() => setSharing(false)} onNote={onNote} />}
+      {sharing && <ShareSheet journey={journey} customerId={customerId} sampleSet={sampleSet} onClose={() => setSharing(false)} onNote={onNote} onBank={onBank} />}
     </section>
   );
 }
@@ -409,7 +418,7 @@ const CARD_TITLES = {
   incomeRead: 'Income papers', affordability: 'Afford', simulator: 'Try terms',
 };
 
-export default function JourneyApp({ user, onSignOut }) {
+export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
   const customerId = user.customerId;
   // The demo's sample lines and journeys come in two flavours: a person, or a Soundbox shop.
   const persona = user.kind === 'merchant' ? 'lakshmi' : 'ramesh';
@@ -422,6 +431,7 @@ export default function JourneyApp({ user, onSignOut }) {
   const [avatar, setAvatar] = useState(() => params.get('avatar') || 'orb');
   const [scene, setScene] = useState(0);
   const [tryOpen, setTryOpen] = useState(false);
+  const [bankOpen, setBankOpen] = useState(false);
   const faces = params.get('faces') !== '0';
   const [phoneReady, setPhoneReady] = useState(false);
   const [arcade, setArcade] = useState(() => params.get('play') || null);
@@ -475,6 +485,9 @@ export default function JourneyApp({ user, onSignOut }) {
   const begin = () => { setVoiceNote(''); setTab('trace'); setScene(0); return start({ customerId, channel: persona === 'lakshmi' ? 'soundbox' : 'call' }); };
   const beginWith = async (prompt) => { if (!inCall) await begin(); send(prompt); };
   const signOut = () => { journey.end(); onSignOut(); };
+  // A bank links on a call, so the statement is checked and sealed like any paper.
+  const openBank = async () => { if (!inCall) await begin(); setBankOpen(true); };
+  const confirmIncome = async (accept, edits) => { await journey.confirmIncome(accept, edits); if (accept && !user.demo) onRefreshUser?.(); };
 
   const sceneList = SCENES[persona];
   const agentLabel = shown?.agent ? AGENTS[shown.agent]?.label : null;
@@ -493,7 +506,7 @@ export default function JourneyApp({ user, onSignOut }) {
           {inCall
             ? <button type="button" className="j-btn-danger" onClick={journey.end}>{Icon.phone}End call</button>
             : <button type="button" className="j-btn-primary" onClick={begin}>{Icon.phone}{status === 'ended' ? 'Call again' : 'Start the call'}</button>}
-          <AccountMenu user={user} onSignOut={signOut} />
+          <AccountMenu user={user} onSignOut={signOut} onLinkBank={openBank} />
         </div>
       </header>
 
@@ -507,7 +520,7 @@ export default function JourneyApp({ user, onSignOut }) {
 
       <main className="j-main">
         <div className="j-col-phone">
-          <Phone journey={journey} customerId={persona} sampleSet={user.sample} onStart={begin} avatar={avatar} onAvatar={setAvatar} faces={faces} phoneReady={phoneReady} onNote={setVoiceNote} />
+          <Phone journey={journey} customerId={persona} sampleSet={user.sample} onStart={begin} avatar={avatar} onAvatar={setAvatar} faces={faces} phoneReady={phoneReady} onNote={setVoiceNote} onBank={openBank} />
         </div>
 
         <section className="j-col-card" aria-label="What MITRA is showing">
@@ -526,13 +539,20 @@ export default function JourneyApp({ user, onSignOut }) {
                   </div>
                 )}
               </div>
-              <ResultCard card={shown} onAsk={(prompt, options) => send(prompt, options)} onPlay={openGame} onDocument={journey.confirmDocument} onIncome={journey.confirmIncome} />
+              <ResultCard card={shown} onAsk={(prompt, options) => send(prompt, options)} onPlay={openGame} onDocument={journey.confirmDocument} onIncome={confirmIncome} />
             </>
           ) : (
             <div className="j-welcome">
               <p className="j-welcome-kicker">Namaste, {user.name.split(' ')[0]}</p>
               <h1>One AI agent for every financial journey.</h1>
               <p>Ask in your own language. MITRA answers aloud in eleven Indian languages. The model listens, translates and picks a tool. It never produces a figure.</p>
+              {!user.income && (
+                <div className="j-welcome-bank">
+                  <i>{Icon.bank}</i>
+                  <span><b>See what you can safely borrow</b><small>Link your bank account in about a minute. No salary slip needed.</small></span>
+                  <button type="button" className="j-btn-primary" disabled={status === 'opening' || status === 'thinking'} onClick={openBank}>Link your bank</button>
+                </div>
+              )}
               {user.income && (
                 <p className="j-welcome-papers"><b>Your papers are on file.</b> MITRA counts ₹{user.income.counted.toLocaleString('en-IN')} a month and a comfortable EMI of ₹{user.income.comfortableEmi.toLocaleString('en-IN')}. It will not ask again.</p>
               )}
@@ -577,6 +597,14 @@ export default function JourneyApp({ user, onSignOut }) {
           <TrustPanel trace={trace} state={state} onSend={send} onResolved={setState} onErased={(out) => { journey.end(); setState(null); setTab('trace'); setVoiceNote(`Erased. ${out.receipts} receipts and everything said on this call were removed.`); }} tab={tab} onTab={setTab} />
         </div>
       </main>
+
+      {bankOpen && (
+        <div className="a-modal" onClick={(event) => { if (event.target === event.currentTarget) setBankOpen(false); }}>
+          <div className="a-modal-card a-vars" role="dialog" aria-label="Link your bank account">
+            <BankConnect user={user} api={journey.bankApi} inCall onBack={() => setBankOpen(false)} onFetched={() => setBankOpen(false)} />
+          </div>
+        </div>
+      )}
 
       {arcade && (
         <Suspense fallback={null}>

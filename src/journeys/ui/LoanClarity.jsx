@@ -6,6 +6,7 @@ import { inr, pct } from '../money.js';
 import { cashFlowWithLoan, classifyDebit } from '../engines/income.js';
 import { applyEdits, profileFromDocuments, STREAM_LABELS } from '../incomeRead.js';
 import { Foot, Row } from './cardParts.jsx';
+import { DocCheck, PaperChecksNote } from './DocCheck.jsx';
 
 const BAND = { fits: ['Fits comfortably', 'is-fits'], tight: ['Tight', 'is-tight'], stretch: ['More than is safe', 'is-stretch'] };
 const SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -52,6 +53,7 @@ export function IncomeReadCard({ data: d, onIncome }) {
       {d.docs.map((doc, docIndex) => (
         <section className="j-tile" key={doc.hash}>
           <p className="j-eyebrow">{doc.kindLabel} · {doc.name}</p>
+          <DocCheck check={doc.check} />
           {doc.kind === 'bank_statement' && (() => {
             const indexed = doc.transactions.map((row, index) => ({ row, index }));
             const moneyIn = indexed.filter(({ row }) => row.credit > 0);
@@ -178,6 +180,7 @@ export function AffordabilityCard({ data: d, onAsk }) {
   const source = { statements: `From ${p.monthCount} months of your papers, ${p.from} to ${p.to}`, stated: 'From the income you told MITRA', declared: 'From your tax return only' }[p.basis];
   return (
     <>
+      <PaperChecksNote checks={p.checks} />
       <section className="j-tile">
         <p className="j-eyebrow">{source}</p>
         <p className="j-hero">{inr(p.comfortableEmi)} a month</p>

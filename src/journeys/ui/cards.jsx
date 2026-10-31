@@ -3,6 +3,7 @@ import { fmtDate, inr, pct } from '../money.js';
 import { Foot, Row } from './cardParts.jsx';
 import { AffordabilityCard, IncomeReadCard, SimulatorCard } from './LoanClarity.jsx';
 import { InsightsCard } from './PaytmInsights.jsx';
+import { DocCheck, PaperChecksNote } from './DocCheck.jsx';
 
 function LoanCard({ data: d, onPlay }) {
   return (
@@ -22,6 +23,10 @@ function LoanCard({ data: d, onPlay }) {
           <div><span>Real yearly cost (APR)</span><b>{pct(d.aprPct)}</b></div>
         </div>
       </section>
+      {d.documentCheck && d.documentCheck.verdict !== 'clean' && (
+        <section className="j-callout is-amber" role="status"><b>{d.documentCheck.headline}.</b> This comes from your own paper, which had a warning when it was read. The lender may not hold to these terms, and this explanation may not be accurate.</section>
+      )}
+      <PaperChecksNote checks={d.paperChecks} />
       {d.statedApr != null && (
         <section className="j-callout is-amber">
           <b>The page and the numbers disagree.</b> The document states an APR of {pct(d.statedApr)}. Counting every charge on it, MITRA gets {pct(d.aprPct)}. A person should check this with the lender.
@@ -425,6 +430,7 @@ function DocumentCard({ data: d, onDocument }) {
         </table>
       </section>
       {d.checks?.map((check) => <section key={check.field} className="j-callout is-amber"><b>Does not add up.</b> {check.text}</section>)}
+      <DocCheck check={d.documentCheck} />
       {d.usable && !d.settled && (
         <div className="j-doc-actions">
           <button type="button" className="is-yes" onClick={() => onDocument?.(true)}>Yes, that is what it says</button>

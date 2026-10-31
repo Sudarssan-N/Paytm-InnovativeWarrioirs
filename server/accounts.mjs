@@ -13,8 +13,11 @@ import { PACKS } from '../src/journeys/policyPacks.js';
 import { addDays, isoDate } from '../src/journeys/money.js';
 import { clientId, rateLimited } from './aiProxy.mjs';
 import { fingerprint, readIncomeDocument } from './documents.mjs';
+import { fileForensics } from './documentForensics.mjs';
+import { checkIncomeDocuments, checkLine, checksCarried } from '../src/journeys/engines/docCheck.js';
 import { sarvamAvailable } from './sarvamServer.mjs';
 import { newId, readStore, updateStore } from './store.mjs';
+import { BANKS, fetchStatements, linkLine, startLink, verifyLink } from './bankLink.mjs';
 
 const scrypt = promisify(scryptCallback);
 const TOKEN_DAYS = 7;
@@ -71,6 +74,7 @@ export function publicUser(user) {
       monthCount: profile.monthCount, from: profile.from, to: profile.to, basis: profile.basis, documents: profile.documents?.length || 0,
     } : null,
     consent: user.consent || null,
+    banks: (user.linkedAccounts || []).map(({ bank, account, linkedOn }) => ({ bank, account, linkedOn })),
   };
 }
 
@@ -194,10 +198,13 @@ export async function readPapers(user, { files, consent }) {
     }
   }));
   const usable = docs.filter((doc) => doc.usable);
+  // Each paper checked on its own and against the account's name. A warning, never a block.
+  const forensics = Object.fromEntries(buffers.map((file) => [fingerprint(file.buffer), fileForensics(file.buffer, { mime: file.mime })]));
+  checkIncomeDocuments(usable, { forensics, today: isoDate(Date.now()), holderName: user.name }).forEach((check, index) => { usable[index].check = check; });
   await changeUser(user.id, (stored) => { stored.pendingPapers = usable.length ? usable : null; });
   return {
     docs: usable, failed: docs.filter((doc) => !doc.usable).map((doc) => ({ name: doc.name, kindLabel: doc.kindLabel, problems: doc.problems })),
-    ms: Date.now() - started, line: incomeReadBackLine(docs),
+    ms: Date.now() - started, line: `${incomeReadBackLine(docs)}${checkLine(usable)}`,
   };
 }
 
@@ -212,14 +219,64 @@ export async function confirmPapers(user, { accept, edits }) {
     const profile = profileFromDocuments(docs);
     if (!profile.monthCount && profile.basis !== 'declared') throw fail(422, 'Nothing is left to count once those lines are unticked');
     const today = isoDate(now);
-    stored.incomeProfile = { ...profile, corrections: changed, confirmedOn: today };
+    const linked = pending.filter((doc) => doc.via === 'aa');
+    stored.incomeProfile = { ...profile, corrections: changed, confirmedOn: today, checks: checksCarried(docs) };
+    if (linked.length) stored.linkedAccounts = [...(stored.linkedAccounts || []), ...linked.map((doc) => ({ bank: doc.bank, account: doc.account, linkedOn: today }))];
     stored.consent = {
-      purpose: 'affordability', words: 'Agreed at onboarding, then confirmed the papers line by line',
+      purpose: 'affordability',
+      words: linked.length ? `Linked ${linked[0].bank} through an Account Aggregator, then confirmed the statement line by line` : 'Agreed at onboarding, then confirmed the papers line by line',
       grantedOn: today, expiresOn: addDays(today, PACKS.privacy.assumptions.consentDays), revokedOn: null,
     };
     return stored;
   });
   return publicUser(saved);
+}
+
+// Linking a bank: consent and OTP, then the accounts, then the statement as data.
+export async function startBankLink(user, { bankId, consent }) {
+  if (consent !== true) throw fail(422, 'Agree to how your statement is used first');
+  const { pending, reply } = startLink(user, bankId);
+  await changeUser(user.id, (stored) => { stored.pendingLink = pending; });
+  return reply;
+}
+
+export async function verifyBankLink(user, body) {
+  return changeUserKeeping(user.id, (stored) => ({ accounts: verifyLink(stored, stored.pendingLink, body) }));
+}
+
+export async function fetchBankLink(user, { handle, accounts }) {
+  const started = Date.now();
+  const docs = await changeUser(user.id, (stored) => {
+    if (stored.pendingLink?.handle !== handle) throw fail(409, 'Start linking your bank again');
+    const fetched = fetchStatements(stored, stored.pendingLink, accounts);
+    stored.pendingLink = null;
+    stored.pendingPapers = fetched;
+    return fetched;
+  });
+  return { docs, failed: [], ms: Date.now() - started, line: linkLine(docs) };
+}
+
+// A wrong OTP still has to count against the tries, so the change is saved even when it fails.
+async function changeUserKeeping(id, fn) {
+  let failure = null;
+  const out = await updateStore((db) => {
+    const user = db.users?.[id];
+    if (!user) throw fail(404, 'Account not found');
+    try { return fn(user); } catch (error) { failure = error; return null; }
+  });
+  if (failure) throw failure;
+  return out;
+}
+
+// Income confirmed on a call is saved to the account too, so the next call has it.
+export async function saveIncomeToAccount(userId, { profile, linked = [], words }) {
+  const now = Date.now();
+  return publicUser(await changeUser(userId, (stored) => {
+    const today = isoDate(now);
+    stored.incomeProfile = { ...profile, confirmedOn: today };
+    if (linked.length) stored.linkedAccounts = [...(stored.linkedAccounts || []).filter((item) => !linked.some((doc) => doc.account === item.account)), ...linked.map((doc) => ({ bank: doc.bank, account: doc.account, linkedOn: today }))];
+    stored.consent = { purpose: 'affordability', words, grantedOn: today, expiresOn: addDays(today, PACKS.privacy.assumptions.consentDays), revokedOn: null };
+  }));
 }
 
 export async function finishOnboarding(user) {
@@ -249,7 +306,7 @@ async function readBody(req, limit = 100_000) {
 export async function handleAuth(req, res, url) {
   try {
     const route = url.pathname.slice('/api/auth'.length);
-    const writes = req.method === 'POST' && ['/signup', '/login', '/demo'].includes(route);
+    const writes = req.method === 'POST' && ['/signup', '/login', '/demo', '/bank/verify'].includes(route);
     if (writes && rateLimited(clientId(req), 'auth')) throw fail(429, 'Too many attempts. Try again in a minute.');
     if (req.method === 'POST' && route === '/signup') return json(res, 201, await signUp(await readBody(req)));
     if (req.method === 'POST' && route === '/login') return json(res, 200, await signIn(await readBody(req)));
@@ -259,10 +316,14 @@ export async function handleAuth(req, res, url) {
     if (!user) throw fail(401, 'Please sign in');
     if (req.method === 'GET' && route === '/me') return json(res, 200, { user: publicUser(user) });
     if (req.method === 'POST' && route === '/logout') { await signOut(req); return json(res, 200, { ok: true }); }
+    if (req.method === 'GET' && route === '/bank/banks') return json(res, 200, { banks: BANKS, sandbox: true });
     if (user.demo) throw fail(403, 'Demo accounts are already set up');
     if (req.method === 'POST' && route === '/profile') return json(res, 200, { user: await updateProfile(user, await readBody(req)) });
     if (req.method === 'POST' && route === '/papers') return json(res, 200, await readPapers(user, await readBody(req, Math.ceil(MAX_BYTES * 1.4))));
     if (req.method === 'POST' && route === '/papers/confirm') return json(res, 200, { user: await confirmPapers(user, await readBody(req)) });
+    if (req.method === 'POST' && route === '/bank/start') return json(res, 200, await startBankLink(user, await readBody(req)));
+    if (req.method === 'POST' && route === '/bank/verify') return json(res, 200, await verifyBankLink(user, await readBody(req)));
+    if (req.method === 'POST' && route === '/bank/fetch') return json(res, 200, await fetchBankLink(user, await readBody(req)));
     if (req.method === 'POST' && route === '/onboarded') return json(res, 200, { user: await finishOnboarding(user) });
     throw fail(404, 'Not found');
   } catch (error) {

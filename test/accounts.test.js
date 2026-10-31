@@ -107,3 +107,46 @@ test('papers the customer rejects are not kept', async () => {
   assert.equal(out.income, null);
   await assert.rejects(accounts.confirmPapers(user, { accept: true }), { status: 409 });
 });
+
+// ── linking a bank, the Account Aggregator way (sandbox) ─────────
+test('a bank links only with consent, the right OTP and a chosen account, then counts like a statement', async () => {
+  const made = await accounts.signUp({ name: 'Sunita Rao', phone: '9000000006', pin: '6666', work: 'gig', city: 'Hyderabad', lang: 'te' });
+  const user = await accounts.userFromRequest(asRequest(made.token));
+  await assert.rejects(accounts.startBankLink(user, { bankId: 'hdfc', consent: false }), { status: 422 });
+  await assert.rejects(accounts.startBankLink(user, { bankId: 'nobank', consent: true }), { status: 422 });
+
+  const link = await accounts.startBankLink(user, { bankId: 'hdfc', consent: true });
+  assert.equal(link.terms.bank, 'HDFC Bank');
+  assert.equal(link.terms.dataLife, '30 days');
+  assert.match(link.sandboxOtp, /^\d{6}$/);
+  const wrong = link.sandboxOtp === '000000' ? '111111' : '000000';
+  await assert.rejects(accounts.verifyBankLink(user, { handle: link.handle, otp: wrong }), { status: 401, message: /4 tries left/ });
+  await assert.rejects(accounts.fetchBankLink(user, { handle: link.handle, accounts: ['hdfc-sav'] }), { status: 409 }, 'nothing is fetched before the OTP');
+
+  const { accounts: found } = await accounts.verifyBankLink(user, { handle: link.handle, otp: link.sandboxOtp });
+  assert.ok(found.length >= 1);
+  assert.match(found[0].masked, /^XXXXXX\d{4}$/);
+  await assert.rejects(accounts.fetchBankLink(user, { handle: link.handle, accounts: [] }), { status: 422 });
+  const fetched = await accounts.fetchBankLink(user, { handle: link.handle, accounts: found.map((item) => item.ref) });
+  assert.equal(fetched.docs[0].via, 'aa');
+  assert.equal(fetched.docs[0].bank, 'HDFC Bank');
+  assert.match(fetched.line, /^Your bank shared a bank statement/);
+  assert.ok(fetched.docs.some((doc) => doc.transactions.some((row) => /SUNITA RAO/.test(row.description))), 'the statement carries the holder’s own name');
+
+  const confirmed = await accounts.confirmPapers(user, { accept: true, edits: [] });
+  assert.ok(confirmed.income.counted > 30000 && confirmed.income.counted < 55000);
+  assert.equal(confirmed.income.existingEmi, 3200, 'an EMI is an EMI, not scaled');
+  assert.equal(confirmed.banks[0].bank, 'HDFC Bank');
+  assert.match(confirmed.consent.words, /Account Aggregator/);
+});
+
+test('five wrong codes stop the link, and a code from another link does not work', async () => {
+  const made = await accounts.signUp({ name: 'Imran', phone: '9000000007', pin: '7171', work: 'shop' });
+  const user = await accounts.userFromRequest(asRequest(made.token));
+  const first = await accounts.startBankLink(user, { bankId: 'sbi', consent: true });
+  const second = await accounts.startBankLink(user, { bankId: 'sbi', consent: true });
+  await assert.rejects(accounts.verifyBankLink(user, { handle: first.handle, otp: first.sandboxOtp }), { status: 409 }, 'a new request replaces the old one');
+  const wrong = second.sandboxOtp === '000000' ? '111111' : '000000';
+  for (let i = 0; i < 5; i++) await assert.rejects(accounts.verifyBankLink(user, { handle: second.handle, otp: wrong }), { status: 401 });
+  await assert.rejects(accounts.verifyBankLink(user, { handle: second.handle, otp: second.sandboxOtp }), { status: 429 });
+});

@@ -20,12 +20,15 @@ import { interpretLoanDocument, readBackLine } from '../src/journeys/documentRea
 import { fingerprint, MAX_DOCUMENT_BYTES, readIncomeDocument, readLoanDocument } from './documents.mjs';
 import { applyEdits, incomeReadBackLine, interpretIncomeDocument, profileFromDocuments } from '../src/journeys/incomeRead.js';
 import { grantConsent, recordFact } from '../src/journeys/consent.js';
-import { carriedIncome, customerFor, userFromRequest } from './accounts.mjs';
+import { carriedIncome, customerFor, saveIncomeToAccount, userFromRequest } from './accounts.mjs';
+import { fetchStatements, linkLine, startLink, verifyLink } from './bankLink.mjs';
 import { agentSpeaker, checkPromises, findPromisesByRules, promiseLine } from '../src/journeys/engines/promises.js';
 import { freeLookStatus } from '../src/journeys/engines/insurance.js';
 import { INSURANCE_PLANS, ISSUED_POLICY, LOAN_OFFERS } from '../src/journeys/sampleData.js';
 import { englishFor, findPromises, MAX_CALL_BYTES, transcribeCall } from './callCheck.mjs';
 import { paytmForSession } from './paytmProfile.mjs';
+import { fileForensics } from './documentForensics.mjs';
+import { checkIncomeDocuments, checkLine, checkLoanDocument, checksCarried } from '../src/journeys/engines/docCheck.js';
 
 const DATA_DIR = path.resolve(process.env.MITRA_DATA_DIR || path.join(process.cwd(), '.data'));
 const KEY_FILE = path.join(DATA_DIR, 'passport-signing-key.pem');
@@ -286,6 +289,7 @@ export async function runTurn(session, input) {
 export async function openSession({ customerId = 'ramesh', channel = 'call', user = null } = {}) {
   const now = clockNow();
   const session = createSession({ id: newId('jrn'), customerId: user ? user.customerId || user.id : customerId, customer: user ? customerFor(user) : null, channel, now });
+  session.accountId = user && !user.demo ? user.id : null;
   // A shop's own Paytm records, or the labelled sample when Paytm is not connected.
   if (session.customer.kind === 'merchant') session.paytm = await paytmForSession({ now });
   // Papers confirmed at onboarding come with the account, under the consent given there.
@@ -332,16 +336,20 @@ async function readDocument(session, input) {
   const hash = fingerprint(buffer);
   const read = await readLoanDocument(buffer, { name: input.name, mime: input.mime });
   const doc = interpretLoanDocument(read, { hash, today: isoDate(clockNow()) });
+  // Is the paper what it claims, and still current? A warning, never a block.
+  const check = checkLoanDocument(read.result, { forensics: fileForensics(buffer, { mime: input.mime }), today: isoDate(clockNow()), holderName: session.customer.name });
+  if (doc.usable) doc.offer.check = { verdict: check.verdict, headline: check.headline };
   const lowest = doc.rows.reduce((low, row) => (row.confidence != null ? Math.min(low, row.confidence) : low), 1);
   trace.push({ kind: 'vision', label: `Sarvam Vision read ${read.pages || 1} ${read.pages === 1 ? 'page' : 'pages'}`, detail: `${doc.rows.length} fields found, lowest confidence ${lowest.toFixed(2)}. sha256 ${hash.slice(0, 12)}…. The file is not stored.`, ms: read.ms, ok: true });
-  for (const check of doc.checks || []) trace.push({ kind: 'engine', label: 'The engine does not agree with the page', detail: check.text, ok: false });
-  if (doc.usable) session.pendingDocument = { offer: doc.offer, hash, name: String(input.name || 'document').slice(0, 80), rows: doc.rows };
-  const english = readBackLine(doc);
+  for (const item of doc.checks || []) trace.push({ kind: 'engine', label: 'The engine does not agree with the page', detail: item.text, ok: false });
+  trace.push({ kind: 'check', label: `Document check: ${check.headline}`, detail: check.flags.map((item) => item.text).join(' ') || check.passed.join(' ') || 'Nothing to check on this file', ok: check.verdict === 'clean' });
+  if (doc.usable) session.pendingDocument = { offer: doc.offer, hash, name: String(input.name || 'document').slice(0, 80), rows: doc.rows, check };
+  const english = `${readBackLine(doc)}${checkLine([{ kindLabel: 'Key Fact Statement', check }])}`;
   const said = await speakBack({ reply: english }, session, trace, {});
   session.lastChips = [];
   sessions.set(session.id, session);
   await persist(session);
-  return turnShape(session, { english, said, trace, card: { type: 'document', data: { lender: doc.lender, rows: doc.rows, usable: doc.usable, checks: doc.checks || [], ms: read.ms, kind: doc.kind, missing: doc.missing }, key: `doc-${hash.slice(0, 6)}` }, chips: doc.usable ? [] : ['Talk to a person'] });
+  return turnShape(session, { english, said, trace, card: { type: 'document', data: { lender: doc.lender, rows: doc.rows, usable: doc.usable, checks: doc.checks || [], ms: read.ms, kind: doc.kind, missing: doc.missing, documentCheck: check }, key: `doc-${hash.slice(0, 6)}` }, chips: doc.usable ? [] : ['Talk to a person'] });
 }
 
 async function confirmDocument(session, { accept }) {
@@ -360,7 +368,11 @@ async function confirmDocument(session, { accept }) {
   const now = clockNow();
   const stamp = await seal(session, {
     title: 'Document read, and confirmed by the customer',
-    evidence: [{ field: 'Document fingerprint', value: `sha256 ${pending.hash.slice(0, 32)}…`, source: pending.name, asOf: isoDate(now) }, ...pending.rows.map((row) => ({ field: row.label, value: row.value, source: row.page ? `Page ${row.page}` : 'Document', asOf: isoDate(now) }))],
+    evidence: [
+      { field: 'Document fingerprint', value: `sha256 ${pending.hash.slice(0, 32)}…`, source: pending.name, asOf: isoDate(now) },
+      ...(pending.check ? [{ field: 'Document check', value: `${pending.check.headline}${pending.check.flags.length ? `: ${pending.check.flags.map((item) => item.label).join(', ')}` : ''}`, source: pending.check.pack.label, asOf: isoDate(now) }] : []),
+      ...pending.rows.map((row) => ({ field: row.label, value: row.value, source: row.page ? `Page ${row.page}` : 'Document', asOf: isoDate(now) })),
+    ],
     formula: 'Read by Sarvam Vision. Every figure confirmed by the customer before use', result: `${pending.rows.length} fields confirmed`, pack: packStamp(PACKS.privacy), action: 'Recorded, not executed',
   }, { now, agent: 'lending', tool: 'read_document' });
   const turn = await runTurn(session, { text: 'What does this loan really cost?', tapped: true });
@@ -398,13 +410,19 @@ async function readIncome(session, input) {
     }
   }));
   const usable = docs.filter((doc) => doc.usable);
+  // Each paper checked on its own and against the others. A warning, never a block.
+  const forensics = Object.fromEntries(buffers.map((file) => [fingerprint(file.buffer), fileForensics(file.buffer, { mime: file.mime })]));
+  checkIncomeDocuments(usable, { forensics, today: isoDate(clockNow()), holderName: session.customer.name }).forEach((check, index) => {
+    usable[index].check = check;
+    trace.push({ kind: 'check', label: `${usable[index].name}: ${check.headline}`, detail: check.flags.map((item) => item.text).join(' ') || check.passed.join(' ') || 'Nothing to check on this file', ok: check.verdict === 'clean' });
+  });
   if (usable.length) {
     // A first look, before any edits, so the customer sees what the papers add up to.
     const preview = profileFromDocuments(usable);
     trace.push({ kind: 'engine', label: 'Income engine sorted every line', detail: `${preview.streams.map((stream) => `${stream.label} ${stream.monthly}/month`).join(', ') || 'No income lines'}. ${preview.excluded.length} not counted as income${preview.receipts.duplicates ? `, ${preview.receipts.duplicates} receipt already on the statement` : ''}`, ms: Date.now() - started, ok: true });
   }
   session.pendingIncome = usable.length ? { docs: usable } : null;
-  const english = incomeReadBackLine(docs);
+  const english = `${incomeReadBackLine(docs)}${checkLine(usable)}`;
   const said = await speakBack({ reply: english }, session, trace, {});
   session.lastChips = [];
   sessions.set(session.id, session);
@@ -431,12 +449,18 @@ async function confirmIncome(session, { accept, edits }) {
   const { docs, changed } = applyEdits(pending.docs, edits);
   const profile = profileFromDocuments(docs);
   if (!profile.monthCount && profile.basis !== 'declared') throw Object.assign(new Error('Nothing is left to count once those lines are unticked'), { status: 422 });
+  // A warning on a paper stays with every answer worked out from it.
+  profile.checks = checksCarried(docs);
   recordFact(session, 'incomeProfile', profile, { words: 'Confirmed on screen, line by line', agent: 'lending', firstFor: 'lending', now });
-  const grant = grantConsent(session, 'affordability', { words: 'Uploaded income papers and confirmed them on screen', now });
+  const linked = docs.filter((doc) => doc.via === 'aa');
+  const words = linked.length ? `Linked ${linked[0].bank} through an Account Aggregator, then confirmed the statement line by line` : 'Uploaded income papers and confirmed them on screen';
+  const grant = grantConsent(session, 'affordability', { words, now });
+  if (session.accountId) await saveIncomeToAccount(session.accountId, { profile, linked, words }).catch((error) => console.error('Could not save income to the account', error.message));
   const stamp = await seal(session, {
     title: 'Income papers read, and confirmed by the customer',
     evidence: [
       ...profile.documents.map((doc) => ({ field: doc.kindLabel, value: `sha256 ${doc.hash.slice(0, 32)}…`, source: doc.name, asOf: isoDate(now) })),
+      ...docs.filter((doc) => doc.check).map((doc) => ({ field: 'Document check', value: `${doc.name}: ${doc.check.headline}`, source: doc.check.pack.label, asOf: isoDate(now) })),
       ...profile.months.map((month) => ({ field: month.label, value: `${month.net} counted`, source: 'Lines the customer kept', asOf: isoDate(now) })),
       { field: 'Corrections by the customer', value: String(changed), source: 'Customer', asOf: isoDate(now) },
     ],
@@ -448,6 +472,54 @@ async function confirmIncome(session, { accept, edits }) {
   turn.passports = [stamp, ...turn.passports];
   turn.trace = [{ kind: 'seal', label: `Sealed ${stamp.id}`, detail: `The lines the customer confirmed${changed ? `, with ${changed} ${changed === 1 ? 'correction' : 'corrections'}` : ''}. Consent ${grant.id}`, ok: true }, ...turn.trace];
   return turn;
+}
+
+// ── linking a bank on a call (Account Aggregator, sandbox) ──────
+// The same consent, OTP and account choice as onboarding. The statement arrives as
+// data, waits for the customer to check it like any paper, then confirmIncome runs.
+function linkUserFor(session, user) {
+  return {
+    id: user?.id || `${session.customerId}:${session.id}`, name: session.customer.name, phone: user?.phone || null,
+    work: user?.work || (session.customer.kind === 'merchant' ? 'shop' : 'gig'),
+  };
+}
+
+async function startBank(session, user, { bankId, consent }) {
+  if (consent !== true) throw Object.assign(new Error('Agree to how your statement is used first'), { status: 422 });
+  const linkUser = linkUserFor(session, user);
+  const { pending, reply } = startLink(linkUser, bankId);
+  session.pendingLink = { ...pending, userId: linkUser.id };
+  await persist(session);
+  return { ...reply, sentTo: user?.phone ? `+91 ••••• ${user.phone.slice(-5)}` : 'your registered mobile' };
+}
+
+async function verifyBank(session, user, body) {
+  try {
+    return { accounts: verifyLink(linkUserFor(session, user), session.pendingLink, body) };
+  } finally { await persist(session); }
+}
+
+async function fetchBank(session, user, { handle, accounts }) {
+  if (session.pendingLink?.handle !== handle) throw Object.assign(new Error('Start linking your bank again'), { status: 409 });
+  const started = Date.now();
+  const docs = fetchStatements(linkUserFor(session, user), session.pendingLink, accounts);
+  session.pendingLink = null;
+  session.pendingIncome = { docs };
+  const trace = [
+    { kind: 'consent', label: `Consent approved for ${docs[0].bank}`, detail: 'One purpose, last 6 months, fetched once, kept 30 days. OTP verified.', ok: true },
+    ...docs.map((doc) => ({ kind: 'vision', label: `Account Aggregator (sandbox) shared ${doc.account}`, detail: `${doc.transactions.length} lines from ${doc.bank}. No file, no password, no money movement.`, ms: Date.now() - started, ok: true })),
+  ];
+  const preview = profileFromDocuments(docs);
+  trace.push({ kind: 'engine', label: 'Income engine sorted every line', detail: `${preview.streams.map((stream) => `${stream.label} ${stream.monthly}/month`).join(', ') || 'No income lines'}. ${preview.excluded.length} not counted as income`, ok: true });
+  const english = linkLine(docs);
+  const said = await speakBack({ reply: english }, session, trace, {});
+  session.lastChips = [];
+  sessions.set(session.id, session);
+  await persist(session);
+  return turnShape(session, {
+    english, said, trace, tool: 'link_bank',
+    card: { type: 'incomeRead', data: { docs, failed: [], ms: Date.now() - started }, key: `bank-${docs.map((doc) => doc.hash.slice(0, 4)).join('')}` },
+  });
 }
 
 // ── promise check ───────────────────────────────────────────────
@@ -674,6 +746,14 @@ export async function handleJourney(req, res, url) {
     }
     if (req.method === 'POST' && parts[1] === 'income' && parts[2] === 'confirm') {
       return json(res, 200, await confirmIncome(session, await readBody(req)));
+    }
+    if (req.method === 'POST' && parts[1] === 'bank' && ['start', 'verify', 'fetch'].includes(parts[2])) {
+      if (parts[2] === 'verify' && rateLimited(clientId(req), 'auth')) return problem(res, 429, 'Too many attempts. Try again in a minute.');
+      const user = await userFromRequest(req);
+      const body = await readBody(req);
+      if (parts[2] === 'start') return json(res, 200, await startBank(session, user, body));
+      if (parts[2] === 'verify') return json(res, 200, await verifyBank(session, user, body));
+      return json(res, 200, await fetchBank(session, user, body));
     }
     if (req.method === 'POST' && parts[1] === 'promise-check') {
       if (!sarvamAvailable() || input_modelOff(req)) return problem(res, 503, 'Listening to a call needs Saaras, which is not available right now');

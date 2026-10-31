@@ -688,3 +688,17 @@ html:has(.j-app), html:has(.j-app) body, html:has(.j-app) #root { display: block
 .j-account-income { margin-top: 8px !important; padding: 8px 10px; border-radius: 10px; background: var(--j-cyan-tint); color: #03506f; font-size: 12.5px; }
 .j-welcome-papers { padding: 12px 14px; border-radius: 14px; background: var(--j-green-tint); color: #06573a !important; font-size: 14px !important; animation: j-in .45s var(--j-ease) .1s both; }
 @media (max-width: 640px) { .j-account span { display: none; } }
+
+/* ── linking a bank from the app ── */
+.j-share-bank { width: 100%; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--j-navy); background: #f5f9ff; text-align: left; color: var(--j-ink) !important; animation: j-in .4s var(--j-ease) both; transition: transform .16s ease, box-shadow .2s ease; }
+.j-share-bank:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgb(0 41 112 / .14); }
+.j-share-bank i { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--j-navy); color: var(--j-cyan); }
+.j-share-bank span { flex: 1; min-width: 0; }
+.j-share-bank b { display: block; color: var(--j-navy); }
+.j-share-bank small { display: block; color: var(--j-soft); font-size: 12px; line-height: 1.35; }
+.j-share-bank em { font-style: normal; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--j-amber-ink); background: var(--j-amber-tint); padding: 2px 8px; border-radius: 99px; }
+.j-welcome-bank { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 14px 16px; border-radius: 16px; background: var(--j-cyan-tint); border: 1px solid #bfe8fa; animation: j-in .45s var(--j-ease) .1s both; }
+.j-welcome-bank > i { flex: none; width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; background: var(--j-navy); color: var(--j-cyan); }
+.j-welcome-bank > span { flex: 1 1 240px; min-width: 0; }
+.j-welcome-bank b { display: block; font-family: var(--j-display); font-size: 17px; color: var(--j-navy); }
+.j-welcome-bank small { display: block; color: #03506f; font-size: 13px; }

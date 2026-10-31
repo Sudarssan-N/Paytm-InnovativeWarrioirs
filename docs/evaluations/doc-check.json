@@ -1,0 +1,290 @@
+{
+ "ranOn": "2026-10-31T06:34:59.515Z",
+ "today": "2026-10-31",
+ "pack": "Document checks, 2026, as of 2026-10-31",
+ "cases": 24,
+ "passed": 24,
+ "falseAlarms": 0,
+ "missed": 0,
+ "groups": {
+  "genuine": {
+   "cases": 8,
+   "passed": 8
+  },
+  "edited": {
+   "cases": 6,
+   "passed": 6
+  },
+  "inconsistent": {
+   "cases": 5,
+   "passed": 5
+  },
+  "expired": {
+   "cases": 3,
+   "passed": 3
+  },
+  "identity": {
+   "cases": 2,
+   "passed": 2
+  }
+ },
+ "failures": [],
+ "results": [
+  {
+   "id": "genuine-rider-statement",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "genuine-kirana-statement",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "genuine-rider-itr",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "genuine-receipt",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "genuine-all-rider-papers",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "genuine-signed-statement",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "genuine-kfs",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  },
+  {
+   "id": "statement-resaved-in-photoshop",
+   "group": "edited",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "editor",
+    "modified_later",
+    "saved_again"
+   ],
+   "pass": true,
+   "headline": "Signs of editing"
+  },
+  {
+   "id": "statement-resaved-in-ilovepdf",
+   "group": "edited",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "editor",
+    "modified_later",
+    "saved_again"
+   ],
+   "pass": true,
+   "headline": "Signs of editing"
+  },
+  {
+   "id": "statement-made-in-word",
+   "group": "edited",
+   "expect": "caution",
+   "got": "caution",
+   "flags": [
+    "office"
+   ],
+   "pass": true,
+   "headline": "Signs of editing"
+  },
+  {
+   "id": "statement-saved-again",
+   "group": "edited",
+   "expect": "caution",
+   "got": "caution",
+   "flags": [
+    "modified_later",
+    "saved_again"
+   ],
+   "pass": true,
+   "headline": "Signs of editing"
+  },
+  {
+   "id": "statement-changed-after-signing",
+   "group": "edited",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "changed_after_signing"
+   ],
+   "pass": true,
+   "headline": "Signs of editing"
+  },
+  {
+   "id": "receipt-saved-in-photoshop",
+   "group": "edited",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "editor"
+   ],
+   "pass": true,
+   "headline": "Signs of editing"
+  },
+  {
+   "id": "statement-one-amount-raised",
+   "group": "inconsistent",
+   "expect": "caution",
+   "got": "caution",
+   "flags": [
+    "balance",
+    "totals"
+   ],
+   "pass": true,
+   "headline": "Does not add up"
+  },
+  {
+   "id": "statement-three-amounts-raised",
+   "group": "inconsistent",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "balance",
+    "totals"
+   ],
+   "pass": true,
+   "headline": "Does not add up"
+  },
+  {
+   "id": "statement-dated-after-today",
+   "group": "inconsistent",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "future"
+   ],
+   "pass": true,
+   "headline": "Does not add up"
+  },
+  {
+   "id": "receipt-reference-reused",
+   "group": "inconsistent",
+   "expect": "suspect",
+   "got": "suspect",
+   "flags": [
+    "reused_reference"
+   ],
+   "pass": true,
+   "headline": "Does not add up"
+  },
+  {
+   "id": "itr-far-above-bank-income",
+   "group": "inconsistent",
+   "expect": "caution",
+   "got": "caution",
+   "flags": [
+    "return_vs_bank"
+   ],
+   "pass": true,
+   "headline": "Does not add up"
+  },
+  {
+   "id": "statement-ends-four-months-ago",
+   "group": "expired",
+   "expect": "expired",
+   "got": "expired",
+   "flags": [
+    "stale"
+   ],
+   "pass": true,
+   "headline": "Out of date"
+  },
+  {
+   "id": "itr-three-years-old",
+   "group": "expired",
+   "expect": "expired",
+   "got": "expired",
+   "flags": [
+    "old_year"
+   ],
+   "pass": true,
+   "headline": "Out of date"
+  },
+  {
+   "id": "kfs-lapsed",
+   "group": "expired",
+   "expect": "expired",
+   "got": "expired",
+   "flags": [
+    "lapsed"
+   ],
+   "pass": true,
+   "headline": "Out of date"
+  },
+  {
+   "id": "statement-in-another-name",
+   "group": "identity",
+   "expect": "caution",
+   "got": "caution",
+   "flags": [
+    "name"
+   ],
+   "pass": true,
+   "headline": "May not be yours"
+  },
+  {
+   "id": "kfs-for-another-borrower",
+   "group": "identity",
+   "expect": "caution",
+   "got": "caution",
+   "flags": [
+    "name"
+   ],
+   "pass": true,
+   "headline": "May not be yours"
+  },
+  {
+   "id": "statement-name-with-full-surname",
+   "group": "genuine",
+   "expect": "clean",
+   "got": "clean",
+   "flags": [],
+   "pass": true,
+   "headline": "No warning signs found"
+  }
+ ],
+ "limits": "Synthetic forgeries made from the sample papers. Real forgeries can be subtler, and real genuine papers come from many more systems than these samples."
+}

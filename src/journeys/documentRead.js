@@ -23,6 +23,9 @@ export const LOAN_DOCUMENT_SCHEMA = {
     apr_pct: { type: 'number', description: 'Annual Percentage Rate stated by the lender' },
     cooling_off_days: { type: 'integer', description: 'Cooling-off period in days' },
     foreclosure: { type: 'string', description: 'Foreclosure or prepayment charge, as written' },
+    issue_date: { type: 'string', description: 'Date the Key Fact Statement was issued, as written' },
+    valid_until: { type: 'string', description: 'Date until which the offer or Key Fact Statement is valid, as written' },
+    borrower: { type: 'string', description: 'Name of the borrower, as written' },
   },
 };
 

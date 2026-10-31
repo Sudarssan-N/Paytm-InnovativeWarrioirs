@@ -12,7 +12,11 @@ before(async () => {
   const port = await new Promise((resolve) => child.stdout.on('data', (chunk) => { const found = String(chunk).match(/:(\d+)$/m); if (found) resolve(found[1]); }));
   api = `http://127.0.0.1:${port}`;
 });
-after(() => { child.kill(); rmSync(data, { recursive: true, force: true }); });
+// The server saves sessions as it shuts down, so its folder goes only after it has exited.
+after(async () => {
+  if (child.exitCode === null) await new Promise((resolve) => { child.once('exit', resolve); child.kill(); });
+  rmSync(data, { recursive: true, force: true });
+});
 
 const post = (route, body = {}) => fetch(`${api}/api/journey${route}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
