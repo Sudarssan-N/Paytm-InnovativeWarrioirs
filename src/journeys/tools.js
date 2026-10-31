@@ -12,6 +12,7 @@ import { explainMerchantOffer, merchantEligibility } from './engines/merchant.js
 import { PURPOSES, revokeConsent } from './consent.js';
 import { PACKS, packStamp } from './policyPacks.js';
 import { addDays, inr, parseAmount, parseDependants, parseLoanTerms, pct } from './money.js';
+import { gameFromAsk } from './game/termScene.js';
 
 export const AGENTS = Object.freeze({
   orchestrator: { label: 'MITRA orchestrator', blurb: 'Knows the journey, the language and the consent in force' },
@@ -145,9 +146,9 @@ const consentStamps = (ctx, purposes) => purposes.map((purpose) => ctx.consentFo
 export const TOOLS = {
   learn_by_playing: {
     agent: 'orchestrator', journey: 'lending', stage: 'explain', params: noArgs,
-    description: 'The customer asks for a game, wants to learn by playing, or wants to see how a loan, a scam or a claim works in a game.',
+    description: 'The customer asks for a game, a scenario or a simulation, or wants to learn by playing: a loan, a scam, a claim, or what a term plan does for the family.',
     run(ctx) {
-      const game = /\b(scams?|fraud|otp|collect)\b/i.test(ctx.turn.textEn) ? 'scam' : /\b(claims?|hospital|insurance)\b/i.test(ctx.turn.textEn) ? 'claim' : 'karz';
+      const game = gameFromAsk(ctx.turn.textEn);
       return {
         reply: 'Let us play it, then. Every rupee in the game comes from the same numbers I use here. Tap the screen when you are ready, and we can talk again after.',
         card: { type: 'arcade', data: { game } },

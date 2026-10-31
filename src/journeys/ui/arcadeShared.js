@@ -1,7 +1,7 @@
 // What every game shares: lines translated behind the figures fence, MITRA's voice,
 // small sound effects, and the receipt that records what the customer understood.
 import { useEffect, useRef, useState } from 'react';
-import { sarvamStreamUrl } from '../../engine/sarvam.js';
+import { getSarvamSpeaker, sarvamStreamUrl, speechify } from '../../engine/sarvam.js';
 import { postJourney } from './useJourney.js';
 
 export const GAME_LANGUAGES = [['en', 'English'], ['hi', 'हिन्दी'], ['ta', 'தமிழ்'], ['te', 'తెలుగు'], ['bn', 'বাংলা'], ['mr', 'मराठी'], ['gu', 'ગુજરાતી'], ['kn', 'ಕನ್ನಡ'], ['ml', 'മലയാളം'], ['od', 'ଓଡ଼ିଆ'], ['pa', 'ਪੰਜਾਬੀ']];
@@ -28,19 +28,40 @@ export function useLines(lang, lines) {
 }
 
 let voice = null;
+let voiceAsk = 0;
 export function stopLine() {
+  voiceAsk += 1;
   if (voice) { voice.onended = null; voice.onerror = null; voice.pause(); voice.src = ''; voice = null; }
 }
 
-export function speakLine(text, lang, { muted = false, onEnd = () => {} } = {}) {
-  stopLine();
-  const url = muted ? null : sarvamStreamUrl(text, { lang });
-  if (!url) { onEnd(false); return; }
-  const el = new Audio(url);
+const wholeClipUrl = (text, lang) => `/api/voice/say?${new URLSearchParams({ text: speechify(text, lang), lang, speaker: getSarvamSpeaker(), pace: '1' })}`;
+
+function playClip(src, onEnd) {
+  const el = new Audio(src);
   voice = el;
   el.onended = () => onEnd(true);
   el.onerror = () => onEnd(false);
   el.play().catch(() => onEnd(false));
+}
+
+// Streams where the browser can play an unfinished MP3. Safari cannot, so there the
+// whole clip is fetched first and played from memory. A failed line reports false.
+export function speakLine(text, lang, { muted = false, onEnd = () => {} } = {}) {
+  stopLine();
+  if (muted) { onEnd(false); return; }
+  const url = sarvamStreamUrl(text, { lang });
+  if (url) { playClip(url, onEnd); return; }
+  const ask = voiceAsk;
+  fetch(wholeClipUrl(text, lang))
+    .then((res) => { if (!res.ok) throw new Error(`Voice returned ${res.status}`); return res.blob(); })
+    .then((clip) => { if (ask === voiceAsk) playClip(URL.createObjectURL(clip), onEnd); })
+    .catch(() => { if (ask === voiceAsk) onEnd(false); });
+}
+
+// Fills the server's voice cache, so the next line starts as soon as this one ends.
+export function preloadLine(text, lang) {
+  const url = sarvamStreamUrl(text, { lang }) || wholeClipUrl(text, lang);
+  fetch(url).then((res) => res.blob()).catch(() => {});
 }
 
 let audio = null;

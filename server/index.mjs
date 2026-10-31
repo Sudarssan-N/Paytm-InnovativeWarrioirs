@@ -4,6 +4,7 @@ import { readStore } from './store.mjs';
 import { aiStatus, proxySarvam } from './aiProxy.mjs';
 import { flushSessions, handleJourney } from './journeyApi.mjs';
 import { handleAuth } from './accounts.mjs';
+import { handleAgentWebhook, startCallScheduler } from './agentCall.mjs';
 import { serveStatic } from './staticFiles.mjs';
 import { acceptStream, handlePhone } from './telephony.mjs';
 import { handleVoice } from './voiceStream.mjs';
@@ -56,6 +57,7 @@ const server = http.createServer(async (req, res) => {
     if (!url.pathname.startsWith('/api/')) return serveStatic(req, res, url);
     if (url.pathname.startsWith('/api/auth/')) return await handleAuth(req, res, url);
     if (url.pathname.startsWith('/api/journey')) return await handleJourney(req, res, url);
+    if (url.pathname.startsWith('/api/voice-agent/webhook/')) return await handleAgentWebhook(req, res, url);
     if (url.pathname.startsWith('/api/phone')) return await handlePhone(req, res, url);
     if (url.pathname.startsWith('/api/voice/')) return await handleVoice(req, res, url);
     if (url.pathname.startsWith('/api/paytm/')) return await handlePaytm(req, res, url);
@@ -78,6 +80,7 @@ const server = http.createServer(async (req, res) => {
 server.on('upgrade', acceptStream);
 
 server.listen(PORT, HOST, () => console.log(`MITRA API listening on http://${HOST}:${server.address().port}`));
+startCallScheduler();
 
 // A deploy waits for calls in progress, then exits cleanly.
 for (const signal of ['SIGTERM', 'SIGINT']) {

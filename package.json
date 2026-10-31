@@ -13,7 +13,9 @@
     "test": "node --test",
     "start": "node --env-file=.env server/index.mjs",
     "warm": "node --env-file=.env scripts/warm-demo-cache.mjs",
-    "preflight": "node --env-file=.env scripts/preflight.mjs"
+    "warm:ghar": "node --env-file=.env scripts/warm-ghar.mjs",
+    "preflight": "node --env-file=.env scripts/preflight.mjs",
+    "check:call": "node --env-file=.env scripts/check-voice-agent.mjs"
   },
   "dependencies": {
     "@met4citizen/talkinghead": "^1.7.0",

@@ -14,13 +14,14 @@ import { newId, readStore, updateStore } from './store.mjs';
 import { bump, recordTurn } from './ops.mjs';
 import { buildLevel, gradeQuiz, levelFromCard, levelIds } from '../src/journeys/game/loanGame.js';
 import { gradeDeck, SCAM_DECK } from '../src/journeys/game/scamDeck.js';
+import { defaultScene, gradeScene, sceneFromGap } from '../src/journeys/game/termScene.js';
 import { explainDeductions } from '../src/journeys/engines/claims.js';
 import { CLAIM, POLICY_WORDING } from '../src/journeys/sampleData.js';
 import { interpretLoanDocument, readBackLine } from '../src/journeys/documentRead.js';
 import { fingerprint, MAX_DOCUMENT_BYTES, readIncomeDocument, readLoanDocument } from './documents.mjs';
 import { applyEdits, incomeReadBackLine, interpretIncomeDocument, profileFromDocuments } from '../src/journeys/incomeRead.js';
 import { grantConsent, recordFact } from '../src/journeys/consent.js';
-import { carriedIncome, customerFor, saveIncomeToAccount, userFromRequest } from './accounts.mjs';
+import { carriedIncome, carriedSpoken, customerFor, saveIncomeToAccount, userFromRequest } from './accounts.mjs';
 import { fetchStatements, linkLine, startLink, verifyLink } from './bankLink.mjs';
 import { agentSpeaker, checkPromises, findPromisesByRules, promiseLine } from '../src/journeys/engines/promises.js';
 import { freeLookStatus } from '../src/journeys/engines/insurance.js';
@@ -270,6 +271,7 @@ export async function runTurn(session, input) {
 
   session.lastCard = result.card ? { ...result.card, agent: result.agent, tool: result.tool, key: String(session.chain.length) } : session.lastCard;
   if (result.card?.type === 'loan') session.lastLoanCard = result.card.data;
+  if (result.card?.type === 'gap') session.lastGap = result.card.data;
   session.lastTrace = allTrace;
   session.lastChips = result.chips || [];
   session.messages.push({ from: 'customer', native: turn.text, english: turn.textEn, lang: turn.lang, confidence: turn.langConfidence, at: now });
@@ -314,6 +316,24 @@ export async function openSession({ customerId = 'ramesh', channel = 'call', use
     }, { now, agent: 'lending', tool: 'read_income_papers', channel });
     passports.push(stamp);
     trace.push({ kind: 'consent', label: 'Income papers from onboarding', detail: `Under consent ${grant.id}, until ${grant.expiresOn}. Not asked again.`, ok: true });
+  }
+  // What the customer told the onboarding call and confirmed on screen.
+  const spoken = user ? carriedSpoken(user, now) : null;
+  if (spoken) {
+    const fields = ['income', 'dependants', 'existingLife', 'existingHealth'].filter((field) => spoken[field] != null);
+    for (const field of fields) recordFact(session, field, spoken[field], { words: spoken.words, agent: 'insurance', firstFor: 'insurance', now });
+    if (fields.length) {
+      const said = grantConsent(session, 'insurance_needs', { words: spoken.words, now });
+      if (spoken.expiresOn < said.expiresOn) said.expiresOn = spoken.expiresOn;
+      passports.push(await seal(session, {
+        title: 'Details carried from the onboarding call',
+        evidence: fields.map((field) => ({ field, value: String(spoken[field]), source: 'Customer, on the onboarding call, confirmed on screen', asOf: spoken.confirmedOn })),
+        formula: 'Heard by the voice agent, then checked and confirmed by the customer', result: `${fields.length} details carried`,
+        pack: packStamp(PACKS.insurance), action: 'Recorded, not executed',
+        consent: [{ id: said.id, purpose: said.purpose, label: said.label, expiresOn: said.expiresOn, days: said.days }],
+      }, { now, agent: 'insurance', tool: 'onboarding_call', channel }));
+      trace.push({ kind: 'consent', label: 'Details from the onboarding call', detail: `Under consent ${said.id}, until ${said.expiresOn}. Not asked again.`, ok: true });
+    }
   }
   session.messages.push({ from: 'mitra', native: hello.reply, english: hello.reply, lang: 'en', at: now });
   sessions.set(session.id, session);
@@ -621,10 +641,16 @@ async function sealUnderstanding(session, input) {
     grade = gradeQuiz(level, input.answers);
     title = `Karz Yatra: ${level.title} understood`;
     evidence = grade.rows.map((row) => ({ field: row.question, value: `${row.chosen ?? 'Not answered'}${row.correct ? ', correct' : `, the answer is ${row.right}`}`, source: 'Computed from the loan', asOf: isoDate(now) }));
+  } else if (input.game === 'term') {
+    const scene = session.lastGap?.life && activeConsent(session, 'insurance_needs', now) ? sceneFromGap(session.lastGap) : defaultScene();
+    grade = gradeScene(scene, input.answers);
+    title = 'Kal Ka Ghar: what a term plan does';
+    evidence = grade.rows.map((row) => ({ field: row.question, value: `${row.chosen ?? 'Not answered'}${row.correct ? ', correct' : `, the answer is ${row.right}`}`, source: 'Same protection-gap engine as the call', asOf: isoDate(now) }));
   } else throw Object.assign(new Error('Unknown game'), { status: 422 });
+  const packForGame = { scam: PACKS.payments, claim: PACKS.claims, term: PACKS.insurance, karz: PACKS.lending };
   const passport = await seal(session, {
     title, evidence, formula: 'Graded on the server from the same engines as the call', result: `${grade.correct} of ${grade.total} understood`,
-    pack: packStamp(input.game === 'scam' ? PACKS.payments : input.game === 'claim' ? PACKS.claims : PACKS.lending), action: 'Recorded. It blocks nothing and signs nothing.',
+    pack: packStamp(packForGame[input.game] || PACKS.lending), action: 'Recorded. It blocks nothing and signs nothing.',
   }, { now, agent: 'orchestrator', tool: 'understanding_check', channel: 'game' });
   session.understanding = [...(session.understanding || []), { game: input.game, correct: grade.correct, total: grade.total, passportId: passport.id, at: new Date(now).toISOString() }];
   bump('understandingChecks');

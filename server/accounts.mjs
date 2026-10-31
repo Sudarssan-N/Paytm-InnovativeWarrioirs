@@ -5,6 +5,7 @@
 // Onboarding asks for income papers once, with consent for one purpose. What the
 // customer confirms is kept on the account and carried into each call under that
 // consent, so no agent asks for it again.
+import { agentCallReady, cancelCall, cleanConfirmed, publicCall, requestCall } from './agentCall.mjs';
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { CUSTOMERS } from '../src/journeys/sampleData.js';
@@ -67,7 +68,9 @@ export function publicUser(user) {
   return {
     id: user.id, demo: Boolean(user.demo), name: user.name, customerId: user.customerId || user.id,
     kind: user.kind || 'customer', work: user.work, workLabel: WORK[user.work]?.label || null, city: user.city || null, lang: user.lang || 'en',
-    phone: user.phone ? `+91 ••••• ${user.phone.slice(-5)}` : null, onboarded: Boolean(user.onboarded),
+    phone: user.phone ? `+91 ••••• ${user.phone.slice(-5)}` : null,
+    // In full for the account's own screen, so nobody confirms a call to a number they cannot read.
+    phoneFull: user.phone ? `+91 ${user.phone.slice(0, 5)} ${user.phone.slice(5)}` : null, onboarded: Boolean(user.onboarded),
     papers: WORK[user.work]?.papers || [], sample: WORK[user.work]?.sample || 'rider',
     income: profile && consentLive(user.consent) ? {
       counted: profile.counted, comfortableEmi: profile.comfortableEmi, stretchEmi: profile.stretchEmi, existingEmi: profile.existingEmi,
@@ -75,6 +78,8 @@ export function publicUser(user) {
     } : null,
     consent: user.consent || null,
     banks: (user.linkedAccounts || []).map(({ bank, account, linkedOn }) => ({ bank, account, linkedOn })),
+    agentCall: publicCall(user),
+    spoken: user.spoken || null,
   };
 }
 
@@ -283,6 +288,49 @@ export async function finishOnboarding(user) {
   return publicUser(await changeUser(user.id, (stored) => { stored.onboarded = true; stored.pendingPapers = null; }));
 }
 
+// A new login number. It signs the customer in from now on, so the PIN must match.
+export async function changePhone(user, { phone, pin }) {
+  const mobile = normalisePhone(phone);
+  if (!mobile) throw fail(422, 'Enter a 10-digit Indian mobile number.');
+  if (!validPin(pin) || !(await pinMatches(pin, user.pin))) throw fail(401, 'That PIN is not right.');
+  const saved = await updateStore((db) => {
+    const stored = db.users?.[user.id];
+    if (!stored) throw fail(404, 'Account not found');
+    if (Object.values(db.users).some((item) => item.id !== user.id && item.phone === mobile)) throw fail(409, 'That number already has an account.');
+    stored.phone = mobile;
+    return stored;
+  });
+  return publicUser(saved);
+}
+
+// The customer's answer to what the agent heard. Only this makes any of it count.
+export async function confirmCall(user, { accept, edits }) {
+  const now = Date.now();
+  const saved = await changeUser(user.id, (stored) => {
+    const call = stored.agentCall;
+    if (!call || call.status !== 'connected' || call.decided) throw fail(409, 'There are no call details waiting');
+    if (!accept) { call.decided = 'discarded'; call.details = null; call.transcript = []; return stored; }
+    const clean = cleanConfirmed(edits || {}, call.details || {});
+    if (clean.work) stored.work = clean.work;
+    if (clean.city) stored.city = clean.city;
+    if (clean.lang) stored.lang = clean.lang;
+    const today = isoDate(now);
+    stored.spoken = {
+      income: clean.income, dependants: clean.dependants, existingLife: clean.existingLife, existingHealth: clean.existingHealth, goal: clean.goal,
+      words: 'Said on the onboarding call, then checked and confirmed on screen', confirmedOn: today,
+      expiresOn: addDays(today, PACKS.privacy.assumptions.consentDays), revokedOn: null,
+    };
+    call.decided = 'confirmed';
+    return stored;
+  });
+  return publicUser(saved);
+}
+
+// What the customer told the agent and confirmed, if that consent still holds.
+export function carriedSpoken(user, now = Date.now()) {
+  return !user.demo && user.spoken && consentLive(user.spoken, isoDate(now)) ? user.spoken : null;
+}
+
 // Income papers confirmed at onboarding, if the consent for them still holds.
 export function carriedIncome(user, now = Date.now()) {
   if (user.demo || !user.incomeProfile || !consentLive(user.consent, isoDate(now))) return null;
@@ -306,7 +354,7 @@ async function readBody(req, limit = 100_000) {
 export async function handleAuth(req, res, url) {
   try {
     const route = url.pathname.slice('/api/auth'.length);
-    const writes = req.method === 'POST' && ['/signup', '/login', '/demo', '/bank/verify'].includes(route);
+    const writes = req.method === 'POST' && ['/signup', '/login', '/demo', '/bank/verify', '/phone', '/call'].includes(route);
     if (writes && rateLimited(clientId(req), 'auth')) throw fail(429, 'Too many attempts. Try again in a minute.');
     if (req.method === 'POST' && route === '/signup') return json(res, 201, await signUp(await readBody(req)));
     if (req.method === 'POST' && route === '/login') return json(res, 200, await signIn(await readBody(req)));
@@ -315,6 +363,7 @@ export async function handleAuth(req, res, url) {
     const user = await userFromRequest(req);
     if (!user) throw fail(401, 'Please sign in');
     if (req.method === 'GET' && route === '/me') return json(res, 200, { user: publicUser(user) });
+    if (req.method === 'GET' && route === '/call') return json(res, 200, { ready: agentCallReady(), call: publicCall(user), user: publicUser(user) });
     if (req.method === 'POST' && route === '/logout') { await signOut(req); return json(res, 200, { ok: true }); }
     if (req.method === 'GET' && route === '/bank/banks') return json(res, 200, { banks: BANKS, sandbox: true });
     if (user.demo) throw fail(403, 'Demo accounts are already set up');
@@ -324,6 +373,10 @@ export async function handleAuth(req, res, url) {
     if (req.method === 'POST' && route === '/bank/start') return json(res, 200, await startBankLink(user, await readBody(req)));
     if (req.method === 'POST' && route === '/bank/verify') return json(res, 200, await verifyBankLink(user, await readBody(req)));
     if (req.method === 'POST' && route === '/bank/fetch') return json(res, 200, await fetchBankLink(user, await readBody(req)));
+    if (req.method === 'POST' && route === '/phone') return json(res, 200, { user: await changePhone(user, await readBody(req)) });
+    if (req.method === 'POST' && route === '/call') return json(res, 201, { call: await requestCall(user, await readBody(req)) });
+    if (req.method === 'POST' && route === '/call/cancel') return json(res, 200, { call: await cancelCall(user) });
+    if (req.method === 'POST' && route === '/call/confirm') return json(res, 200, { user: await confirmCall(user, await readBody(req)) });
     if (req.method === 'POST' && route === '/onboarded') return json(res, 200, { user: await finishOnboarding(user) });
     throw fail(404, 'Not found');
   } catch (error) {

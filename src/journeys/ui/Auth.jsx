@@ -3,6 +3,7 @@
 // consent for one purpose, your income papers, checked line by line.
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { inr } from '../money.js';
+import AgentCall from './AgentCall.jsx';
 import { IncomeReadCard } from './LoanClarity.jsx';
 import { authApi, getToken, readFiles, sampleFiles, setToken } from './auth.js';
 import './journeys.css';
@@ -198,7 +199,7 @@ function SignIn({ onSignedIn }) {
 }
 
 // ── onboarding ──────────────────────────────────────────────────
-const STEPS = ['Account', 'About you', 'Your papers', 'Ready'];
+const STEPS = ['Account', 'About you', 'Your papers', 'A call', 'Ready'];
 
 function useCountUp(target, ms = 900) {
   const [value, setValue] = useState(0);
@@ -547,6 +548,13 @@ function ReadyStep({ user, onStart }) {
       <svg className="a-tick" width="84" height="84" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="38" /><path d="M26 43l11 11 21-23" /></svg>
       <h2>You’re all set, {user.name.split(' ')[0]}.</h2>
       <p className="a-sub">MITRA will greet you in {LANG_NAME[user.lang] || 'English'}{income ? ', and it already knows what you can afford.' : '.'}</p>
+      {user.spoken && (
+        <div className="a-stats">
+          {user.spoken.income != null && <div><span>Income you told MITRA</span><b>{inr(user.spoken.income)}</b><small>a month</small></div>}
+          {user.spoken.dependants != null && <div><span>People who depend on you</span><b>{user.spoken.dependants}</b><small>from your call</small></div>}
+          {user.spoken.existingLife != null && <div><span>Life cover you have</span><b>{inr(user.spoken.existingLife)}</b><small>from your call</small></div>}
+        </div>
+      )}
       {income ? (
         <div className="a-stats">
           <div><span>Income MITRA counts</span><b>{inr(counted)}</b><small>a month, from your weaker months</small></div>
@@ -555,7 +563,7 @@ function ReadyStep({ user, onStart }) {
         </div>
       ) : null}
       {income && user.banks?.length > 0 && <p className="a-linked">{ICON.bank}Linked: {user.banks.map((item) => `${item.bank} ••${item.account.slice(-4)}`).join(', ')}</p>}
-      {income ? null : <p className="a-callout">No papers yet. You can share them on any call with the + button, and MITRA works out what you can afford there.</p>}
+      {income || user.spoken ? null : <p className="a-callout">No papers yet. You can share them on any call with the + button, and MITRA works out what you can afford there.</p>}
       <div className="a-actions is-center"><button type="button" className="a-btn is-big" onClick={onStart}>Start your first call{ICON.arrow}</button></div>
     </div>
   );
@@ -569,7 +577,7 @@ function Onboarding({ user: start, onDone, onSignOut }) {
   const finish = async () => {
     const out = await authApi('/onboarded', { method: 'POST' }).catch(() => null);
     if (out) setUser(out.user);
-    go(3);
+    go(4);
   };
   return (
     <div className="a-shell a-onboard">
@@ -591,8 +599,16 @@ function Onboarding({ user: start, onDone, onSignOut }) {
       <main className="a-stage">
         <div className={`a-step is-${dir}`} key={step}>
           {step === 1 && <AboutStep user={user} onNext={(next) => { setUser(next); go(2); }} />}
-          {step === 2 && <PapersStep user={user} onNext={(next) => { setUser(next); finish(); }} onSkip={finish} onBack={() => go(1)} />}
-          {step === 3 && <ReadyStep user={user} onStart={() => onDone(user)} />}
+          {step === 2 && <PapersStep user={user} onNext={(next) => { setUser(next); go(3); }} onSkip={() => go(3)} onBack={() => go(1)} />}
+          {step === 3 && (
+            <div className="a-step-body">
+              <h2>MITRA can ring you, and ask the rest</h2>
+              <p className="a-sub">A short call in your language, so you do not have to type. You check what it heard before anything is used.</p>
+              <AgentCall user={user} onUser={setUser} onDone={finish} skipLabel="Skip the call" />
+              <div className="a-actions is-center"><button type="button" className="a-link" onClick={() => go(2)}>Back</button></div>
+            </div>
+          )}
+          {step === 4 && <ReadyStep user={user} onStart={() => onDone(user)} />}
         </div>
       </main>
     </div>
@@ -642,7 +658,7 @@ export default function AuthGate() {
     if (phase === 'onboarding') return <Onboarding user={user} onDone={(next) => { setUser(next); setPhase('app'); }} onSignOut={signOut} />;
     return (
       <Suspense fallback={<div className="a-shell a-loading"><Logo /><Spinner /></div>}>
-        <div className="a-enter"><JourneyApp user={user} onSignOut={signOut} onRefreshUser={refreshUser} /></div>
+        <div className="a-enter"><JourneyApp user={user} onSignOut={signOut} onRefreshUser={refreshUser} onUser={setUser} /></div>
       </Suspense>
     );
   }, [phase, user, enter, signOut, refreshUser]);

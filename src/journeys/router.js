@@ -41,7 +41,7 @@ const SAFETY = [
   [/\b(claim)\b.{0,50}\b(rejected|denied|refused)\b|\b(rejected|denied|refused)\b.{0,50}\b(claim)\b/i, 'handoff_to_human', { reason: 'dispute' }],
 
   // Only when asked for. A scam can mention a game too: "pay ₹500 for this online game".
-  [(t) => /\bas a game\b|\b(play|show me|teach me|start|open)\b.{0,20}\bgame\b|\blearn by playing\b/i.test(t) && !/\b(pay|paid|fee|money|earn|win|won|prize|otp|pin|deposit)\b/i.test(t), 'learn_by_playing', {}],
+  [(t) => (/\bas a game\b|\b(play|show me|teach me|start|open)\b.{0,24}\b(game|scenario|simulation)\b|\blearn by playing\b|\bkal ka ghar\b/i.test(t) || (/\b(scenario|simulation)\b/i.test(t) && /\b(term|insurance|cover|family)\b/i.test(t))) && !/\b(pay|paid|fee|money|earn|win|won|prize|otp|pin|deposit)\b/i.test(t), 'learn_by_playing', {}],
   [/upi:\/\/(pay|mandate)\?/i, 'check_payment_request', {}],
 
   // Small conversational turns that keep a call human.
@@ -124,7 +124,7 @@ How to choose:
 - A loan they describe with an amount, rate or tenure, or a loan they want and ask about: explain_loan_offer.
 - How much they can borrow, whether they can afford a loan, a safe EMI, irregular gig or shop income, or their bank statements, receipts or tax return: check_affordability.
 - What changes with another amount or term, a lower EMI, or "what if" about the loan: simulate_terms.
-- Asking for a game, or to learn by playing: learn_by_playing.
+- Asking for a game, a scenario, a simulation, or to learn by playing: learn_by_playing. A term-cover scenario is still this, not a quote.
 - A shopkeeper asking how much their shop sold or collected: merchant_sales_summary. A person asking for a loan is never this.
 - A shopkeeper asking how their business is doing overall, or for advice, tips or suggestions for the shop, from their Paytm data: merchant_insights. Money for the shop is merchant_eligibility.
 - Cancelling a loan they took or just signed, or how many days they have: cooling_off_status.

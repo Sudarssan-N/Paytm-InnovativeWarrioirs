@@ -5,14 +5,16 @@ import './arcade.css';
 const LoanGame = lazy(() => import('./LoanGame.jsx'));
 const ScamShield = lazy(() => import('./ScamShield.jsx'));
 const ClaimDetective = lazy(() => import('./ClaimDetective.jsx'));
+const TermScene = lazy(() => import('./TermScene.jsx'));
 
 const GAMES = [
   { id: 'karz', name: 'Karz Yatra', what: 'Drive your own loan', teaches: 'APR, EMI split, prepaying, bounces, insurance', art: '🛺' },
+  { id: 'term', name: 'Kal Ka Ghar', what: 'What a term plan really does', teaches: 'A block-world story: who gets paid, how long the money lasts, and what comes back', art: '🧱' },
   { id: 'scam', name: 'Scam Shield', what: 'Block the trap, pay the real one', teaches: 'Collect requests, fake KYC, digital arrest, task scams', art: '🛡' },
   { id: 'claim', name: 'Claim Detective', what: 'Find the unfair cut on a hospital bill', teaches: 'Room rent limits, proportionate deductions', art: '🔍' },
 ];
 
-export default function Arcade({ open, card, sessionId, lang, onClose, onSealed, onAsk, auto = false, level = null }) {
+export default function Arcade({ open, card, household = null, sessionId, lang, onClose, onSealed, onAsk, auto = false, level = null }) {
   const [gameLang, setGameLang] = useState(GAME_LANGUAGES.some(([code]) => code === lang) ? lang : 'en');
   const [game, setGame] = useState(open === true ? null : open);
 
@@ -60,6 +62,7 @@ export default function Arcade({ open, card, sessionId, lang, onClose, onSealed,
             </div>
           )}
           {game === 'karz' && <LoanGame {...shared} card={card} auto={auto} startLevel={level} initialLang={gameLang} />}
+          {game === 'term' && <TermScene {...shared} card={card?.life ? card : household} />}
           {game === 'scam' && <ScamShield {...shared} />}
           {game === 'claim' && <ClaimDetective {...shared} />}
         </Suspense>

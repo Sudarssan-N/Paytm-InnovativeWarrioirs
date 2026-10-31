@@ -27,7 +27,6 @@ html:has(.j-app), html:has(.j-app) body, html:has(.j-app) #root { display: block
 .j-logo-mark { width: 26px; height: 26px; border-radius: 8px; flex: none; background: var(--j-cyan) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4'/%3E%3C/svg%3E") center/18px no-repeat; }
 .j-divider { width: 1px; height: 20px; background: var(--j-line); }
 .j-track { color: var(--j-soft); }
-.j-proto { font-size: 12px; padding: 2px 9px; border-radius: 99px; background: var(--j-amber-tint); color: var(--j-amber-ink); font-weight: 600; }
 .j-segment { display: inline-flex; padding: 2px; background: var(--j-line-soft); border-radius: 9px; }
 .j-segment button { border: 0; background: none; padding: 5px 11px; border-radius: 7px; font-weight: 600; color: var(--j-soft); font-size: 13px; }
 .j-segment button.is-active { background: var(--j-surface); color: var(--j-navy); box-shadow: 0 1px 2px rgb(0 41 112 / .14); }

@@ -70,7 +70,7 @@ function LoanCard({ data: d, onPlay }) {
   );
 }
 
-function GapCard({ data: d }) {
+function GapCard({ data: d, onPlay }) {
   const Block = ({ title, item, note }) => (
     <section className="j-tile">
       <p className="j-eyebrow">{title}</p>
@@ -84,6 +84,12 @@ function GapCard({ data: d }) {
   );
   return (
     <>
+      {onPlay && (
+        <button type="button" className="j-play-cta" onClick={() => onPlay('term', d)}>
+          <i aria-hidden="true">🧱</i>
+          <span><b>See it as a story: Kal Ka Ghar</b><small>Your numbers, in a block world, with a voice. Three minutes.</small></span>
+        </button>
+      )}
       <Block title="Life cover" item={d.life} note={`${d.multiple} × yearly income of ${inr(d.annualIncome)}`} />
       <Block title="Health cover" item={d.health} note={`Target for ${d.city || 'your city'}`} />
       <p className="j-card-foot">{d.assumption}</p>
@@ -91,9 +97,15 @@ function GapCard({ data: d }) {
   );
 }
 
-function PlansCard({ data: d }) {
+function PlansCard({ data: d, onPlay }) {
   return (
     <>
+      {onPlay && (
+        <button type="button" className="j-play-cta" onClick={() => onPlay('term')}>
+          <i aria-hidden="true">🧱</i>
+          <span><b>See it as a story: Kal Ka Ghar</b><small>What a term plan really does, with a voice. Three minutes.</small></span>
+        </button>
+      )}
       <div className="j-plans">
         {d.plans.map((plan) => (
           <section className="j-tile" key={plan.id}>
@@ -477,8 +489,8 @@ function PromisesCard({ data: d }) {
 function ArcadeCard({ data: d, onPlay }) {
   return (
     <button type="button" className="j-play-cta" onClick={() => onPlay?.(d.game)}>
-      <i aria-hidden="true">{{ karz: '🛺', scam: '🛡', claim: '🔍' }[d.game]}</i>
-      <span><b>{{ karz: 'Karz Yatra: drive your loan', scam: 'Scam Shield: block the trap', claim: 'Claim Detective: find the unfair cut' }[d.game]}</b><small>Uses the same numbers as this call</small></span>
+      <i aria-hidden="true">{{ karz: '🛺', term: '🧱', scam: '🛡', claim: '🔍' }[d.game]}</i>
+      <span><b>{{ karz: 'Karz Yatra: drive your loan', term: 'Kal Ka Ghar: what a term plan really does', scam: 'Scam Shield: block the trap', claim: 'Claim Detective: find the unfair cut' }[d.game]}</b><small>Uses the same numbers as this call</small></span>
     </button>
   );
 }

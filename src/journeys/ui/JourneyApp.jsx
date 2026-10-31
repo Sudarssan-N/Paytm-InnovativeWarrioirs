@@ -1,3 +1,4 @@
+import AgentCall, { CallCountdown } from './AgentCall.jsx';
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LANGUAGE_LABELS, STAGES, STAGE_LABELS } from '../orchestrator.js';
 import { AGENTS } from '../tools.js';
@@ -182,7 +183,7 @@ function DemoControls({ handsFree, setHandsFree, modelOff, setModelOff, chaos, s
 }
 
 // Who is signed in, and the way out.
-function AccountMenu({ user, onSignOut, onLinkBank }) {
+function AccountMenu({ user, onSignOut, onLinkBank, onCallSheet }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const ref = useDismiss(open, close);
@@ -204,9 +205,11 @@ function AccountMenu({ user, onSignOut, onLinkBank }) {
             {user.banks?.length > 0 && <span>Bank linked: {user.banks.map((item) => `${item.bank} ••${item.account.slice(-4)}`).join(', ')}</span>}
             {user.income
               ? <p className="j-account-income">Income papers on file: <b>₹{user.income.counted.toLocaleString('en-IN')}</b> a month counted, under consent until {user.consent?.expiresOn}.</p>
-              : !user.demo && <p className="j-account-income">No income papers yet. Share them on a call with the + button.</p>}
+              : !user.demo && !user.spoken && <p className="j-account-income">No income papers yet. Share them on a call with the + button.</p>}
+            {user.spoken && <p className="j-account-income">From your call: {[user.spoken.income != null && `₹${user.spoken.income.toLocaleString('en-IN')} a month`, user.spoken.dependants != null && `${user.spoken.dependants} depend on you`, user.spoken.goal].filter(Boolean).join(', ') || 'nothing kept'}.</p>}
           </div>
           <button type="button" className="j-switch-row" onClick={() => { close(); onLinkBank(); }}><span><b>{user.banks?.length ? 'Link another bank account' : 'Link a bank account'}</b><small>Through an Account Aggregator, with your consent</small></span></button>
+          {!user.demo && <button type="button" className="j-switch-row" onClick={() => { close(); onCallSheet(); }}><span><b>Phone number and calls</b><small>Change your number, or have MITRA ring you</small></span></button>}
           <button type="button" className="j-switch-row" onClick={onSignOut}><span><b>Sign out</b><small>{user.demo ? 'Back to the sign-in screen' : 'Your account and papers stay saved'}</small></span></button>
         </div>
       )}
@@ -418,7 +421,17 @@ const CARD_TITLES = {
   incomeRead: 'Income papers', affordability: 'Afford', simulator: 'Try terms',
 };
 
-export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
+export default function JourneyApp({ user, onSignOut, onRefreshUser, onUser }) {
+  const [callSheet, setCallSheet] = useState(false);
+  // A call can finish while the customer is doing something else: what it heard waits for them.
+  const agentCall = user.agentCall;
+  const callPending = Boolean(agentCall && (['scheduled', 'placing', 'calling'].includes(agentCall.status) || agentCall.reading));
+  const callToCheck = agentCall?.status === 'connected' && !agentCall.decided && !agentCall.reading;
+  useEffect(() => {
+    if (!callPending) return undefined;
+    const timer = setInterval(() => onRefreshUser?.(), 5000);
+    return () => clearInterval(timer);
+  }, [callPending, onRefreshUser]);
   const customerId = user.customerId;
   // The demo's sample lines and journeys come in two flavours: a person, or a Soundbox shop.
   const persona = user.kind === 'merchant' ? 'lakshmi' : 'ramesh';
@@ -479,6 +492,10 @@ export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
     if (latest.type === 'arcade') setTimeout(() => setArcade(latest.data.game), 1800);
   }, [cards]);
   const loanCard = useMemo(() => [...cards].reverse().find((item) => item.type === 'loan')?.data || null, [cards]);
+  const gapCard = useMemo(() => [...cards].reverse().find((item) => item.type === 'gap')?.data || null, [cards]);
+  const today = new Date().toISOString().slice(0, 10);
+  const insuranceLive = (state?.consents || []).some((grant) => grant.purpose === 'insurance_needs' && grant.status === 'active' && grant.expiresOn >= today);
+  const termCard = insuranceLive ? (arcadeCard?.life ? arcadeCard : gapCard) : null;
   const openGame = useCallback((game, data = null) => { setArcadeCard(data); setArcade(game); }, []);
 
   const inCall = !['idle', 'ended'].includes(status);
@@ -498,7 +515,6 @@ export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
       <header className="j-top">
         <div className="j-top-left">
           <Logo />
-          <span className="j-proto">Prototype, synthetic data</span>
         </div>
         <div className="j-top-right">
           <DemoControls handsFree={handsFree} setHandsFree={setHandsFree} modelOff={modelOff} setModelOff={setModelOff} chaos={chaos} setChaos={setChaos} />
@@ -506,7 +522,7 @@ export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
           {inCall
             ? <button type="button" className="j-btn-danger" onClick={journey.end}>{Icon.phone}End call</button>
             : <button type="button" className="j-btn-primary" onClick={begin}>{Icon.phone}{status === 'ended' ? 'Call again' : 'Start the call'}</button>}
-          <AccountMenu user={user} onSignOut={signOut} onLinkBank={openBank} />
+          <AccountMenu user={user} onSignOut={signOut} onLinkBank={openBank} onCallSheet={() => setCallSheet(true)} />
         </div>
       </header>
 
@@ -517,6 +533,18 @@ export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
           {error || (modelOff ? 'Model outage simulated: no speech, translation or routing model. Engines and receipts keep working, with guided options in English and Hindi.' : voiceNote)}
         </div>
       )}
+
+      {callToCheck && !callSheet && (
+        <div className="j-notice" role="status">
+          Your call with MITRA is done. <button type="button" className="j-btn-primary" onClick={() => setCallSheet(true)}>Check what it heard</button>
+        </div>
+      )}
+      {agentCall?.status === 'scheduled' && !callSheet && (
+        <div className="j-notice" role="status">
+          MITRA will call you in <CallCountdown at={agentCall.scheduledFor} />. <button type="button" className="j-btn-primary" onClick={() => setCallSheet(true)}>View or cancel</button>
+        </div>
+      )}
+      {agentCall?.status === 'calling' && !callSheet && <div className="j-notice" role="status">MITRA is calling your phone. What you say will appear here for you to check.</div>}
 
       <main className="j-main">
         <div className="j-col-phone">
@@ -598,6 +626,15 @@ export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
         </div>
       </main>
 
+      {callSheet && (
+        <div className="ac-sheet" role="dialog" aria-modal="true" aria-label="Phone number and calls">
+          <section className="a-vars">
+            <header><h2>Phone number and calls</h2><button type="button" aria-label="Close" onClick={() => setCallSheet(false)}>✕</button></header>
+            <AgentCall user={user} onUser={onUser} />
+          </section>
+        </div>
+      )}
+
       {bankOpen && (
         <div className="a-modal" onClick={(event) => { if (event.target === event.currentTarget) setBankOpen(false); }}>
           <div className="a-modal-card a-vars" role="dialog" aria-label="Link your bank account">
@@ -610,7 +647,8 @@ export default function JourneyApp({ user, onSignOut, onRefreshUser }) {
         <Suspense fallback={null}>
           <Arcade
             open={arcade === 'true' ? true : arcade}
-            card={arcadeCard || loanCard}
+            card={arcade === 'term' ? termCard : (arcadeCard || loanCard)}
+            household={termCard}
             sessionId={state?.sessionId}
             lang={params.get('lang') || state?.lang || 'en'}
             auto={params.get('auto') === '1'}

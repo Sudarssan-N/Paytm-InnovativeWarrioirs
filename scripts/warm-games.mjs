@@ -3,13 +3,15 @@
 //   node --env-file=.env scripts/warm-games.mjs [langs] [api]
 import { buildLevel, LABELS, lessonLine, levelIds, quizFor } from '../src/journeys/game/loanGame.js';
 import { gradeCard, SCAM_DECK } from '../src/journeys/game/scamDeck.js';
+import { sceneLines, TERM_UI } from '../src/journeys/game/termScene.js';
+import { voiceLines } from '../src/journeys/game/termGame.js';
 
 const LANGS = (process.argv[2] || 'ta,hi,te,kn,bn,mr,gu,ml,od,pa').split(',');
 const API = process.argv[3] || 'http://127.0.0.1:8787';
 const SCAM_UI = ['Ten requests. Block the trap, or pay the real one. One wrong tap can cost you everything, so read each one.', 'Block it', 'It is safe', 'Right.', 'Careful.', 'Next', 'This was a trap', 'This one was real', 'Play again', 'Your Fraud IQ', 'Sealed on your Journey Passport', 'Check a real message with MITRA'];
 const CLAIM_UI = ['The insurer cut this hospital bill. Some cuts follow the policy, and some do not. Tap every line you think was cut unfairly.', 'Bill item', 'Billed', 'Paid', 'Looks wrong', 'Looks fair', 'Open the case', 'Try again', 'You found', 'Why', 'Draft the grievance with MITRA', 'Right', 'Missed', 'This cut was fair', 'Money you are owed'];
 const level = buildLevel('personal');
-const lines = new Set([...Object.values(LABELS), ...SCAM_UI, ...CLAIM_UI, ...SCAM_DECK.flatMap((card) => [card.text, gradeCard(card, card.scam).why])]);
+const lines = new Set([...Object.values(LABELS), ...Object.values(TERM_UI), ...sceneLines(), ...Object.values(voiceLines()), ...SCAM_UI, ...CLAIM_UI, ...SCAM_DECK.flatMap((card) => [card.text, gradeCard(card, card.scam).why])]);
 for (const id of levelIds()) {
   const each = buildLevel(id);
   lines.add(lessonLine('fee', each));

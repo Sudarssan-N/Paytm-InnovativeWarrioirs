@@ -273,3 +273,133 @@ test('a scam that mentions a game goes to the scam check, not to a game', async 
   assert.equal(routeByRules('Can I play a game about loans')?.name, 'learn_by_playing');
   assert.equal(routeByRules('Show me this loan as a game')?.name, 'learn_by_playing');
 });
+
+// Plays Kal Ka Ghar the way a person does: runs at whatever is coming.
+function playGhar(game, stepGame, { stopCousin = true, payBills = true } = {}) {
+  let guard = 0;
+  while (game.stage !== 'over' && guard++ < 40000) {
+    const target = game.stage === 'earn'
+      ? (game.ores[0] || game.mobs[0])
+      : game.mobs
+        .filter((mob) => (mob.kind === 'bill' && payBills) || (mob.kind === 'cousin' && stopCousin))
+        .sort((a, b) => Math.abs(a.goal - a.x) / a.speed - Math.abs(b.goal - b.x) / b.speed)[0];
+    let dir = 0;
+    if (target && Math.abs(target.x - game.x) > 0.3) dir = target.x > game.x ? 1 : -1;
+    const high = game.stage === 'earn' && target?.h > 0 && Math.abs(target.x - game.x) < 0.4;
+    stepGame(game, 1 / 30, { dir, jump: high });
+    if (game.stage === 'shop') return game;
+  }
+  return game;
+}
+
+test('Kal Ka Ghar: what you choose decides what happens to the house', async () => {
+  const { protectionGap } = await import('../src/journeys/engines/insurance.js');
+  const { buildScene, defaultScene, gameFromAsk, gradeScene, lakhs, quizFor, sceneFromGap, sceneLines, spanLabel } = await import('../src/journeys/game/termScene.js');
+  const { createGame, GAME, leaveShop, rewindGame, skipStorm, stepGame, toggleShield, voiceLines, yearsOfBills } = await import('../src/journeys/game/termGame.js');
+  const { TOOLS } = await import('../src/journeys/tools.js');
+  const { routeByRules } = await import('../src/journeys/router.js');
+  const scene = defaultScene();
+  const gap = protectionGap({ income: 45000, dependants: 3, existingLife: 1000000, loans: 0, city: 'Chennai' });
+  assert.equal(scene.gap.life.gap, gap.life.gap);
+  assert.equal(scene.without.months, 31);
+  assert.equal(scene.with.months, 269);
+  assert.equal(spanLabel(31), '2 years 7 months');
+  assert.equal(lakhs(7500000), '₹75 lakh');
+  assert.equal(sceneFromGap(gap).income, 45000);
+  assert.equal(buildScene({ income: 45000, dependants: 3, existingLife: 1000000, loans: 200000, city: 'Chennai' }).without.pot, 800000);
+  assert.equal(scene.health.premiumYear, 18400);
+
+  // Earning: the gold is the salary, the bill takes its real share, then the shop.
+  const toShop = (term, health) => {
+    const game = playGhar(createGame(scene), stepGame);
+    assert.equal(game.stage, 'shop');
+    assert.equal(game.wallet, (45000 - 31500) * 2);
+    if (term) toggleShield(game, 'term');
+    if (health) toggleShield(game, 'health');
+    leaveShop(game);
+    assert.equal(game.stage, 'storm');
+    assert.equal(game.who, 'meena');
+    assert.equal(game.blocks, yearsOfBills(1000000, 31500));
+    skipStorm(game);
+    return game;
+  };
+  const finish = (game, how) => {
+    stepGame(game, 1 / 30);
+    assert.equal(game.stage, 'hold');
+    return playGhar(game, stepGame, how);
+  };
+
+  // No term plan: the same answer as the engine. Money ends in year 3, Anu is 10.
+  const bare = finish(toShop(false, false));
+  assert.equal(bare.outcome.won, false);
+  assert.equal(bare.outcome.reason, 'empty');
+  assert.equal(bare.outcome.age, 10);
+
+  // A health plan does not stand in for a term plan.
+  assert.equal(finish(toShop(false, true)).outcome.won, false);
+
+  // The term plan: Anu reaches 22, and the gold left is what the engine says, less 14 years.
+  const both = finish(toShop(true, true));
+  assert.equal(both.outcome.won, true);
+  assert.equal(both.outcome.age, GAME.goalAge);
+  assert.equal(both.outcome.cousinStopped, true);
+  assert.ok(Math.abs(both.blocks - (yearsOfBills(8500000, 31500) - 14)) < 1e-9);
+
+  // A term plan does not pay the hospital: it costs gold without a health plan.
+  const termOnly = finish(toShop(true, false));
+  assert.equal(termOnly.outcome.won, true);
+  assert.ok(Math.abs(termOnly.blocks - (both.blocks - GAME.hospitalCost * GAME.hospitalYears.length)) < 1e-9);
+
+  // Letting the cousin through costs gold; ignoring bills costs hearts and the house.
+  const parked = toShop(true, true);
+  stepGame(parked, 1 / 30);
+  parked.x = GAME.cols - 0.6;
+  const seen = [];
+  for (let at = 0; at < 600 && !seen.includes('cousinTook'); at += 1) seen.push(...stepGame(parked, 1 / 30).map((event) => event.type));
+  assert.ok(seen.includes('cousin'));
+  assert.ok(seen.includes('cousinTook'));
+  const ignored = finish(toShop(true, true), { payBills: false, stopCousin: false });
+  assert.equal(ignored.outcome.won, false);
+  assert.equal(ignored.outcome.reason, 'debt');
+  assert.equal(ignored.hearts, 0);
+
+  // Rewind goes back to the choice, not to the start.
+  const again = rewindGame(bare);
+  assert.equal(again.stage, 'shop');
+  assert.equal(again.attempt, 2);
+  assert.equal(again.term, false);
+
+  // No cover today: the first bill already cannot be paid.
+  const none = buildScene({ income: 45000, dependants: 1, existingLife: 0, city: 'Chennai' });
+  const noneGame = playGhar(createGame(none), stepGame);
+  leaveShop(noneGame);
+  skipStorm(noneGame);
+  assert.equal(finish(noneGame).outcome.age, 8);
+
+  const said = Object.values(voiceLines(scene));
+  assert.ok(said.every((line) => line.length <= 220), 'barks stay short');
+  assert.ok(said.length <= 40);
+  const heard = said.join(' ');
+  assert.match(heard, /₹75 lakh/);
+  assert.match(heard, /no money comes back/);
+  assert.match(heard, /2 years 7 months/);
+  assert.match(heard, /A term plan does not pay hospital bills/);
+  assert.ok(sceneLines(scene).length > 4);
+
+  const questions = quizFor(scene);
+  assert.equal(gradeScene(scene, questions.map((question) => question.answer)).correct, questions.length);
+  assert.equal(gradeScene(scene, []).correct, 0);
+  assert.ok(new Set(questions.map((question) => question.answer)).size > 1);
+
+  assert.equal(gameFromAsk('can I play a game about scams'), 'scam');
+  assert.equal(gameFromAsk('Show me this loan as a game'), 'karz');
+  assert.equal(gameFromAsk('Show me term cover as a game'), 'term');
+  assert.equal(gameFromAsk('Play the family scenario'), 'term');
+  assert.equal(gameFromAsk('play a game about my claim'), 'claim');
+  assert.equal(routeByRules('Show me term cover as a game')?.name, 'learn_by_playing');
+  assert.equal(routeByRules('Play a simulation of term insurance')?.name, 'learn_by_playing');
+  assert.notEqual(routeByRules('What is a term plan?')?.name, 'learn_by_playing');
+  const opened = TOOLS.learn_by_playing.run({ turn: { textEn: 'Show me term cover as a game' } });
+  assert.equal(opened.card.data.game, 'term');
+  assert.deepEqual(figuresIn(opened.reply), []);
+});
