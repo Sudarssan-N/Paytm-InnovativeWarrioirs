@@ -1,0 +1,15 @@
+.avatar-upper-arm, .avatar-forearm, .avatar-hand, .avatar-head { transition: transform .6s cubic-bezier(.25,.8,.25,1); }
+.avatar-upper-arm, .avatar-forearm, .avatar-hand { transform-origin: 0 0; }
+.avatar-stage { animation: avatar-idle 4s ease-in-out infinite !important; max-width: 100%; }
+.avatar-stage.is-speaking { animation: avatar-speak 1.8s ease-in-out infinite !important; }
+.avatar-stage.mitra-gesture-thumbs-up { animation: avatar-celebrate .75s ease-in-out 2 !important; }
+.avatar-waving-palm { transform-origin: 0 5px; animation: avatar-wave .52s ease-in-out 5 alternate; }
+.avatar-stage.mitra-gesture-listen { animation: none !important; }
+@keyframes avatar-idle { 0%,100% { transform: translateY(0) rotate(-.7deg); } 50% { transform: translateY(-4px) rotate(.7deg); } }
+@keyframes avatar-speak { 0%,100% { transform: translateY(0) rotate(-1deg); } 45% { transform: translateY(-3px) rotate(1deg); } }
+@keyframes avatar-celebrate { 0%,100% { transform: translateY(0) rotate(0); } 40% { transform: translateY(-9px) rotate(-3deg); } 70% { transform: translateY(-3px) rotate(2deg); } }
+@keyframes avatar-wave { from { transform: rotate(-14deg); } to { transform: rotate(18deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .avatar-stage, .avatar-stage.is-speaking, .avatar-stage.mitra-gesture-thumbs-up, .avatar-waving-palm { animation: none !important; }
+  .avatar-upper-arm, .avatar-forearm, .avatar-hand, .avatar-head { transition: none; }
+}

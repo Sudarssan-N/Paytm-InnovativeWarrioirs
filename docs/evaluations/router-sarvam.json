@@ -1,0 +1,80 @@
+{
+ "model": "sarvam-105b-conversations",
+ "ranOn": "2026-10-30T21:08:47.378Z",
+ "routing": {
+  "questions": 155,
+  "answered": 155,
+  "right": 138,
+  "pct": 89,
+  "p50": 166,
+  "p90": 195
+ },
+ "scamDeck": {
+  "cards": 10,
+  "stopped": 6,
+  "scams": 6,
+  "falseAlarms": 0,
+  "rows": [
+   {
+    "text": "Your PM Loan of ₹5,00,000 is approved. Pay ₹2,999 processing fee to pm",
+    "scam": true,
+    "engine": "stop",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "Your electricity bill of ₹1,240 is due on 5 Nov. Pay in the app from t",
+    "scam": false,
+    "engine": "clear",
+    "opinion": "looks_normal"
+   },
+   {
+    "text": "Paytm refund of ₹4,500 is waiting. Approve the collect request and ent",
+    "scam": true,
+    "engine": "stop",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "Your KYC has expired and your account will be blocked today. Click thi",
+    "scam": true,
+    "engine": "stop",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "I scanned the shop QR at the kirana store to pay ₹320 for groceries I ",
+    "scam": false,
+    "engine": "clear",
+    "opinion": "looks_normal"
+   },
+   {
+    "text": "Congratulations! You won ₹25,00,000 in a lucky draw. Send ₹5,000 tax t",
+    "scam": true,
+    "engine": "stop",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "Your EMI of ₹9,603 is due on the 5th. Pay it from the loan section of ",
+    "scam": false,
+    "engine": "clear",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "This is the cyber police. Your Aadhaar is linked to a crime. Stay on t",
+    "scam": true,
+    "engine": "stop",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "Earn ₹5,000 a day from home. Pay ₹999 registration today to start the ",
+    "scam": true,
+    "engine": "stop",
+    "opinion": "likely_scam"
+   },
+   {
+    "text": "My brother is sitting next to me and asked me to send him ₹2,000 on hi",
+    "scam": false,
+    "engine": "clear",
+    "opinion": "looks_normal"
+   }
+  ]
+ }
+}

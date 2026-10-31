@@ -1,0 +1,38 @@
+{
+ "ranOn": "2026-10-30T23:19:56.527Z",
+ "note": "One Node process, engines and fences only, no provider calls",
+ "results": [
+  {
+   "concurrency": 1,
+   "turns": 14380,
+   "turnsPerSecond": 1798,
+   "p50": 0,
+   "p95": 1,
+   "errors": 0
+  },
+  {
+   "concurrency": 10,
+   "turns": 33975,
+   "turnsPerSecond": 4247,
+   "p50": 1,
+   "p95": 3,
+   "errors": 0
+  },
+  {
+   "concurrency": 50,
+   "turns": 35257,
+   "turnsPerSecond": 4407,
+   "p50": 8,
+   "p95": 18,
+   "errors": 0
+  },
+  {
+   "concurrency": 200,
+   "turns": 36338,
+   "turnsPerSecond": 4542,
+   "p50": 31,
+   "p95": 57,
+   "errors": 0
+  }
+ ]
+}

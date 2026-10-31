@@ -1,0 +1,8 @@
+/* .mitra-avatar (styles.css) already provides the display/place-items/flex-shrink
+   behavior every call site's layout (presenter, call, companion) depends on to
+   keep the avatar from being squeezed or overlapping neighbouring elements in a
+   flex column. Compound with it (rather than relying on stylesheet order) so
+   these overrides win regardless of CSS load order across chunks. */
+.mitra-avatar.mitra-avatar-3d { position: relative; border-radius: 50%; overflow: hidden; }
+.mitra-avatar-3d-canvas { width: 100%; height: 100%; }
+.mitra-avatar-3d-canvas canvas { display: block; width: 100% !important; height: 100% !important; }

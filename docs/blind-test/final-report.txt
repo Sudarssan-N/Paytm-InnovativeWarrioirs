@@ -1,0 +1,15 @@
+OVERALL 168/192 = 88%
+lang {'en': '56/64', 'hinglish': '41/47', 'hi': '27/32', 'ta': '43/48', '?': '1/1'}
+src {'model': '137/155', 'rules': '31/37'}
+loan_offer=11/12 foreclosure_ques=12/12 cooling_off=12/12 prepay_vs_invest=12/12 protection_gap=12/12 plans=6/12 free_look=7/12 claim_deductions=12/12 claim_checklist=11/12 draft_grievance=12/12 check_payment_re=10/12 merchant_eligibi=4/12 handoff_to_human=11/12 revoke_consent=12/12 close_journey=12/12 OUT_OF_SCOPE=12/12
+latency p50 2095 p90 2865 max 3369 errors 0
+CORRECT 168 (88%) | SAFE MISS, asks again or brings a person 16 (8%) | WRONG ANSWER 8 (4%)
+--- WRONG ANSWERS
+explain_plans      -> explain_term           [rules] en | They are telling top-up policy is cheap, but when I will use it? I am not understand
+explain_plans      -> protection_gap         [model] hi | My husband died. I don't have any policy in my name right now. Which plan should I g
+explain_plans      -> protection_gap         [model] ta | Hello, sir, I have just completed my college and I am newly employed. The salary is 
+free_look_status   -> cooling_off_status     [model] en | Yesterday the agent came and made me sign something. I am not understanding what it 
+free_look_status   -> cooling_off_status     [model] hing | The agent said there won't be any issues, just sign. Now, I'd like to proceed with t
+free_look_status   -> close_journey          [rules] hi | Beta, aapko yeh policy deposit deni hogi. You can cut out the $ I need, that's all I
+merchant_eligibili -> explain_loan_offer     [model] en | My need is only fifty thousand for buying goods, how much interest you will take mon
+handoff_to_human   -> repeat_last            [rules] hing | Sir, I have a problem with the account, your robot is repeatedly repeating, I need a

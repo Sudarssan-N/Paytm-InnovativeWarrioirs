@@ -1,0 +1,37 @@
+OVERALL 140/192 = 73%
+lang {'en': '48/64', 'hinglish': '33/48', 'hi': '26/32', 'ta': '33/48'}
+src {'rules': '93/123', 'model': '47/69'}
+loan_offer=12/12 foreclosure_ques=10/12 cooling_off=1/12 prepay_vs_invest=5/12 protection_gap=10/12 plans=12/12 free_look=8/12 claim_deductions=10/12 claim_checklist=12/12 draft_grievance=1/12 check_payment_re=10/12 merchant_eligibi=11/12 handoff_to_human=8/12 revoke_consent=7/12 close_journey=11/12 OUT_OF_SCOPE=12/12
+latency p50 1730 p90 2606 max 3102 errors 0
+CORRECT 140 (73%) | SAFE MISS, asks again or brings a person 22 (11%) | WRONG ANSWER 30 (16%)
+--- WRONG ANSWERS
+foreclosure_questi -> explain_loan_offer     [rules] en | Can I finish my loan before time? Will they take fine or something?
+foreclosure_questi -> explain_loan_offer     [rules] hing | Can we pay off the loan first? Is there any extra cost?
+cooling_off_status -> explain_loan_offer     [rules] en | I want to cancel the loan I just took. How many days do I have?
+cooling_off_status -> explain_loan_offer     [rules] en | What is the time limit for cancelling a loan? I changed my mind.
+cooling_off_status -> mark_loan_signed       [model] en | Is there any cooling period? I just signed the papers.
+cooling_off_status -> explain_loan_offer     [rules] hing | You want to cancel your loan, how many days do you have?
+cooling_off_status -> mark_loan_signed       [model] hing | I just signed, can I cancel now?
+cooling_off_status -> explain_loan_offer     [rules] hing | The loan is non-refundable, so please specify the period of the cancellation.
+cooling_off_status -> explain_loan_offer     [rules] hi | I have just signed a loan, can I cancel it? How many days are there?
+cooling_off_status -> explain_loan_offer     [rules] ta | I have just signed a loan agreement, can I cancel it? How many days are there?
+cooling_off_status -> explain_loan_offer     [rules] hi | What is the loan cancellation time? I'm not looking for one now.
+cooling_off_status -> explain_loan_offer     [rules] ta | How long does it take to cancel a loan? I don't want to.
+prepay_vs_invest   -> explain_loan_offer     [rules] en | I have some extra money this month, should I close my loan or put it in something?
+prepay_vs_invest   -> explain_loan_offer     [rules] en | Which is better, paying the EMI before time or doing SIP?
+cooling_off_status -> mark_loan_signed       [rules] ta | I signed it yesterday, can I cancel it now? How many days are you available?
+prepay_vs_invest   -> explain_loan_offer     [rules] hing | Sir, thoda paisa bacha hai, loan pehle bharna chahiye ya invest karna?
+prepay_vs_invest   -> explain_loan_offer     [rules] hing | Is the loan interest rate higher, or is it possible that I get more through SIP?
+prepay_vs_invest   -> explain_loan_offer     [rules] hing | Shall I pay the EMI now or should I transfer it to the mutual fund?
+prepay_vs_invest   -> explain_loan_offer     [rules] ta | The interest is high, should I pay the advance or can you put it in something else?
+prepay_vs_invest   -> explain_loan_offer     [rules] ta | With the bonus, can I pay off the bank loan or buy gold?
+protection_gap     -> explain_plans          [model] hi | Do we have to get a separate policy for children or will it be included?
+free_look_status   -> record_loan_decision   [rules] en | I took the policy last week only, I don't want it now. Can I get my money back?
+free_look_status   -> record_loan_decision   [rules] ta | Sir, I have taken insurance last week, I don't want to pay it. Will the money be ref
+draft_grievance    -> explain_claim_deductio [rules] en | I am not at all happy with the settlement amount, it is too less, nobody explained m
+draft_grievance    -> claim_checklist        [rules] hing | Claim payment is not received yet, how many days and how much to wait, please tell.
+draft_grievance    -> send_lender_brief      [model] ta | "You've given us all the papers, now you don't want to ask for them again?"
+check_payment_requ -> explain_loan_offer     [rules] hing | Brother, I just received a text message that the loan approval is complete, but the 
+check_payment_requ -> explain_loan_offer     [rules] ta | I've received the message that your loan has been approved, you need to pay the firs
+merchant_eligibili -> explain_loan_offer     [rules] ta | Small business, will I get loan assistance to buy goods
+close_journey      -> record_loan_decision   [model] hing | Okay brother, I'll keep it, we'll talk tomorrow

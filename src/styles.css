@@ -1,0 +1,147 @@
+/* Design tokens and page base for the MITRA app. Each screen's own styles
+   live beside it, in journeys/ui and components. */
+:root {
+  --bg: #f4f8f7;
+  --card: #ffffff;
+  --card-2: #eaf3f1;
+  --ink: #06201c;
+  --ink-soft: #5c6f6c;
+
+  --blue: #0f8c7e;        
+  --blue-link: #0f8c7e;
+  --blue-hover: #0b6f63;
+  --orange: #f2761d;      
+  --amber: #f2761d;
+  --green: #1a9c6b;
+  --red: #d93a2b;
+  --slate: #5c6f6c;
+  --paper: #ffffff;
+
+  
+  --teal: #0f8c7e;
+  --teal-2: #6bbdb2;
+  --teal-dark: #0b6f63;
+  --teal-deep: #094f47;
+  --mint: #9cd6cc;
+
+  --line: rgba(6, 32, 28, 0.1);
+  --line-strong: rgba(6, 32, 28, 0.16);
+  --chart-track: rgba(6, 32, 28, 0.07);
+  --glass: #ffffff;
+  --glass-2: #eaf3f1;
+
+  
+  --night: #06201c;
+  --night-2: #0b2e29;
+  --on-night: #eaf3f1;
+
+  --nav-bg: #06201c;
+  --nav-line: transparent;
+
+  --radius: 28px;
+  --radius-sm: 20px;
+  --shadow: none;
+  --font: 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --display: 'Bricolage Grotesque', 'Instrument Sans', -apple-system, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --serif: var(--font);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1715;
+    --card: #17211f;
+    --card-2: #1c2825;
+    --ink: #eef4f2;
+    --ink-soft: #9db3ae;
+    --blue: #2bb4a2;
+    --blue-link: #4fd0bd;
+    --blue-hover: #3ec3af;
+    --orange: #ff9152;
+    --amber: #ff9152;
+    --green: #35c98a;
+    --red: #ef6255;
+    --slate: #9db3ae;
+    --paper: #17211f;
+
+    --teal: #2bb4a2;
+    --teal-2: #5bd0bf;
+    --teal-dark: #3ec3af;
+    --teal-deep: #9cd6cc;
+    --mint: #6bbdb2;
+
+    --line: rgba(238, 244, 242, 0.1);
+    --line-strong: rgba(238, 244, 242, 0.18);
+    --chart-track: rgba(238, 244, 242, 0.09);
+    --glass: #17211f;
+    --glass-2: #1c2825;
+
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f1715;
+  --card: #17211f;
+  --card-2: #1c2825;
+  --ink: #eef4f2;
+  --ink-soft: #9db3ae;
+  --blue: #2bb4a2;
+  --blue-link: #4fd0bd;
+  --blue-hover: #3ec3af;
+  --orange: #ff9152;
+  --amber: #ff9152;
+  --green: #35c98a;
+  --red: #ef6255;
+  --slate: #9db3ae;
+  --paper: #17211f;
+
+  --teal: #2bb4a2;
+  --teal-2: #5bd0bf;
+  --teal-dark: #3ec3af;
+  --teal-deep: #9cd6cc;
+  --mint: #6bbdb2;
+
+  --line: rgba(238, 244, 242, 0.1);
+  --line-strong: rgba(238, 244, 242, 0.18);
+  --chart-track: rgba(238, 244, 242, 0.09);
+  --glass: #17211f;
+  --glass-2: #1c2825;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme='dark'] body { background: #070c0b; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body { background: #070c0b; }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+::selection { background: rgba(15, 140, 126, 0.25); }
+
+body {
+  background: #dfeae7;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { width: 100%; display: flex; justify-content: center; padding: 18px 12px; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(217, 58, 43, 0.5); }
+  70% { box-shadow: 0 0 0 10px rgba(217, 58, 43, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(217, 58, 43, 0); }
+}

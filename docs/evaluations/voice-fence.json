@@ -1,0 +1,813 @@
+{
+ "ranOn": "2026-10-30T21:49:10.481Z",
+ "voice": "bulbul:v3, neha",
+ "hearing": "saaras:v3, translate mode",
+ "lines": 7,
+ "languages": 11,
+ "passed": 75,
+ "checked": 77,
+ "dateMisreads": 0,
+ "failures": [
+  {
+   "lang": "en",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "textFence": true,
+   "spokenFence": false,
+   "missing": [
+    "12345"
+   ],
+   "dateMisread": false,
+   "heard": "The amounts are ₹590, ₹1250, ₹7890, ₹12000, ₹345, ₹99990 and ₹341250. "
+  },
+  {
+   "lang": "bn",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "Amount-গুলো হল ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 আর ₹3,41,250।",
+   "textFence": true,
+   "spokenFence": false,
+   "missing": [
+    "341250"
+   ],
+   "dateMisread": false,
+   "heard": "The amounts are 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees and 341."
+  }
+ ],
+ "errors": 0,
+ "rows": [
+  {
+   "lang": "en",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "With the ₹7,080 fee, the APR is 17.7%.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With the ₹7080 fee, the APR is 17.7%."
+  },
+  {
+   "lang": "en",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You get ₹1,92,920 and repay ₹2,30,472 at ₹9,603 a month."
+  },
+  {
+   "lang": "en",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "The APR is 21%, not the 14% shown.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The APR is 21%, not the 14% shown."
+  },
+  {
+   "lang": "en",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is ₹1 lakh rupees at ₹590 rupees a day, and the APR is 34.4%."
+  },
+  {
+   "lang": "en",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer paid ₹93,750 and ₹14,250 looks wrong."
+  },
+  {
+   "lang": "en",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "You need about ₹71,00,000 more life cover.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You need about ₹71 lakh rupees more life cover."
+  },
+  {
+   "lang": "en",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "textFence": true,
+   "spokenFence": false,
+   "missing": [
+    "12345"
+   ],
+   "dateMisread": false,
+   "heard": "The amounts are ₹590, ₹1250, ₹7890, ₹12000, ₹345, ₹99990 and ₹341250. "
+  },
+  {
+   "lang": "hi",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 की fee के साथ, APR 17.7% है।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of seven thousand eighty rupees, APR is seventeen point seven percent."
+  },
+  {
+   "lang": "hi",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "आपको ₹1,92,920 मिलते हैं और आपको ₹2,30,472 हर महीने ₹9,603 के हिसाब से चुकाना होगा।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You get one lakh ninety-two thousand nine hundred twenty rupees and you will have to pay two lakh thirty thousand four hundred seventy-two rupees at the rate of nine thousand six hundred three rupees per month."
+  },
+  {
+   "lang": "hi",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% है, 14% नहीं जैसा दिखाया गया है।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The PR is 21 percent, not 14 percent as shown."
+  },
+  {
+   "lang": "hi",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan ₹1,00,000 का है, जो एक दिन के ₹590 के हिसाब से है, और APR 34.4% है।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is one lakh rupees, which is at the rate of five hundred ninety rupees per day, and the APR is thirty-four point four percent."
+  },
+  {
+   "lang": "hi",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer ने ₹93,750 दिए, और ₹14,250 ग़लत लग रहे हैं।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer gave ninety-three thousand seven hundred fifty rupees, and fourteen thousand two hundred fifty rupees are being charged incorrectly."
+  },
+  {
+   "lang": "hi",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "आपको लगभग ₹71,00,000 ज़्यादा life cover चाहिए होगा।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will need approximately 71 lakh rupees more life cover."
+  },
+  {
+   "lang": "hi",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "रक़म ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 और ₹3,41,250 है।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The amount is 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees, and 341250 rupees."
+  },
+  {
+   "lang": "ta",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 கட்டணத்தோட, APR 17.7%-ஆ இருக்கும்.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of 7080 rupees, the APR will be 17.7%."
+  },
+  {
+   "lang": "ta",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "உங்களுக்கு ₹1,92,920 கிடைக்கும், அப்பறம் ₹2,30,472 repay பண்ணனும், ₹9,603 per month.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will receive one lakh ninety-two thousand nine hundred and twenty rupees. Then, you will have to repay two lakh thirty thousand four hundred and seventy-two rupees. Nine thousand six hundred and three rupees per month."
+  },
+  {
+   "lang": "ta",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% தான், காட்டற மாதிரி 14% இல்ல.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The PR is only 21%. It is not 14% as shown."
+  },
+  {
+   "lang": "ta",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan-ங்கறது ₹1,00,000, ஒரு நாளைக்கு ₹590. APR 34.4%.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Working capital loan is one lakh rupees. Five hundred and ninety rupees per day. APR is thirty-four point four percent."
+  },
+  {
+   "lang": "ta",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer ₹93,750 கட்டியிருக்காங்க, ஆனா ₹14,250 கொஞ்சம் தப்பா இருக்குன்னு தோணுது.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer has paid 93,750 rupees, but 14,250 rupees seems a bit wrong."
+  },
+  {
+   "lang": "ta",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "உங்களுக்கு ₹71,00,000 life cover இன்னும் தேவைப்படும்.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will still need 71 lakh rupees for life cover."
+  },
+  {
+   "lang": "ta",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "அந்தத் தொகை ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 அப்பறம் ₹3,41,250.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "That amount is five hundred ninety rupees, one thousand two hundred fifty rupees, seven thousand eight hundred ninety rupees, twelve thousand three hundred forty-five rupees, ninety-nine thousand nine hundred ninety rupees, and then three lakh forty-one thousand two hundred fifty rupees."
+  },
+  {
+   "lang": "te",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 fee-తో APR 17.7% ఉంటుంది.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of 7080 rupees, the APR will be 17.7%."
+  },
+  {
+   "lang": "te",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "మీకు ₹1,92,920 వస్తుంది, నెలకు ₹9,603 చొప్పున మీరు ₹2,30,472 తిరిగి చెల్లించాలి.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will receive one lakh ninety-two thousand nine hundred and twenty rupees. You must repay two lakh thirty thousand four hundred and seventy-two rupees at the rate of nine thousand six hundred and three rupees per month."
+  },
+  {
+   "lang": "te",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% ఉంది, చూపించినట్టు 14% కాదు.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "That PR is 21 percent. It is not 14 percent as shown."
+  },
+  {
+   "lang": "te",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan ₹1,00,000. రోజుకి ₹590 చొప్పున, APR 34.4%.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Working capital loan is one lakh rupees. At the rate of five hundred and ninety rupees per day, APR is thirty-four point four percent."
+  },
+  {
+   "lang": "te",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer ₹93,750 కట్టారు, ₹14,250 మాత్రం సరిగ్గా లేదు.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer paid 93,750 rupees. 14,250 rupees is not correct."
+  },
+  {
+   "lang": "te",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "మీకు దాదాపు ₹71,00,000 life cover కావాలి.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You need approximately 71 lakh rupees life cover."
+  },
+  {
+   "lang": "te",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "ఆ amounts ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990, ఇంకా ₹3,41,250.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Those amounts are five hundred ninety rupees, one thousand two hundred fifty rupees, seven thousand eight hundred ninety rupees, twelve thousand three hundred forty-five rupees, ninety-nine thousand nine hundred ninety rupees, and three lakh forty-one thousand two hundred fifty rupees."
+  },
+  {
+   "lang": "bn",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 fee-এর সাথে, APR হল 17.7%.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of 7080 rupees, the APR is 17.7 percent."
+  },
+  {
+   "lang": "bn",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "আপনি 1,92,920 টাকা পাবেন আর 9,603 টাকা মাসিক করে 2,30,472 টাকা repay করবেন।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will receive 1,92,920 taka and will repay 2,30,472 taka monthly, totaling 9,603 taka."
+  },
+  {
+   "lang": "bn",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR-টা 21%, shown-এর মতো 14% না।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "APR is 21 percent, not 14 percent like gold."
+  },
+  {
+   "lang": "bn",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan-টা ₹1,00,000, ₹590 per day, আর APR 34.4%.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The marking capital loan is one lakh rupees, five hundred ninety rupees per day, and APR is thirty-four point four percent."
+  },
+  {
+   "lang": "bn",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer 93,750 টাকা pay করেছে, আর 14,250 টাকাটা ভুল মনে হচ্ছে।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer paid ninety-three thousand seven hundred fifty rupees, and fourteen thousand two hundred fifty rupees is incorrect."
+  },
+  {
+   "lang": "bn",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "আপনার আরও প্রায় 71,00,000 টাকা life cover  লাগবে।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will need approximately 7.1 million taka for life cover."
+  },
+  {
+   "lang": "bn",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "Amount-গুলো হল ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 আর ₹3,41,250।",
+   "textFence": true,
+   "spokenFence": false,
+   "missing": [
+    "341250"
+   ],
+   "dateMisread": false,
+   "heard": "The amounts are 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees and 341."
+  },
+  {
+   "lang": "mr",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 fee-सह, APR 17.7% आहे.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The APR with a fee of seven thousand eighty rupees is seventeen point seven percent."
+  },
+  {
+   "lang": "mr",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "तुम्हाला ₹1,92,920 मिळतात आणि दरमहा ₹9,603 च्या दराने ₹2,30,472 परतफेड करावी लागते.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You get one lakh ninety-two thousand nine hundred twenty rupees, and at the rate of nine thousand six hundred three rupees per month, you have to repay two lakh thirty thousand four hundred seventy-two rupees."
+  },
+  {
+   "lang": "mr",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% आहे, दाखवलेल्या 14% नाही.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The PR is 21 percent, not the shown 14 percent."
+  },
+  {
+   "lang": "mr",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan ₹1,00,000 चा आहे, जो दररोज ₹590 इतका आहे आणि APR 34.4% आहे.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is one lakh rupees, which is five hundred ninety rupees per day, and the APR is thirty-four point four percent."
+  },
+  {
+   "lang": "mr",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer-ने ₹93,750 दिले आणि ₹14,250 चुकीचे वाटतात.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insured have given 93,750 rupees and 14,250 rupees seem wrong."
+  },
+  {
+   "lang": "mr",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "तुम्हाला जवळपास 71,00,000 रुपये life cover जास्त लागेल.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will need approximately 71 lakh rupees for life cover."
+  },
+  {
+   "lang": "mr",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "ही रक्कम ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 आणि ₹3,41,250 इतकी आहे.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "This amount is 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees and 341250 rupees."
+  },
+  {
+   "lang": "gu",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "7,080 રૂપિયાની fee સાથે, APR 17.7% છે.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of seven thousand eighty rupees, the APR is seventeen point seven percent."
+  },
+  {
+   "lang": "gu",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "તમને 1,92,920 રૂપિયા મળે છે અને 9,603 રૂપિયા મહિનાના 2,30,472 રૂપિયા પાછા ભરવાના થાય છે.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You receive one lakh ninety-two thousand nine hundred twenty rupees, and nine thousand six hundred three rupees, which amounts to two lakh thirty thousand four hundred seventy-two rupees per month, needs to be repaid."
+  },
+  {
+   "lang": "gu",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% છે, બતાવેલું 14% નહિ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "APR is 21%, not the specified 14%."
+  },
+  {
+   "lang": "gu",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan 1,00,000 રૂપિયાનો છે, જે 590 રૂપિયા per day છે, અને APR 34.4% છે.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is one lakh rupees, which is five hundred ninety rupees per day, and the APR is thirty-four point four percent."
+  },
+  {
+   "lang": "gu",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer-એ 93,750 રૂપિયા ભર્યા અને 14,250 રૂપિયા ખોટા લાગે છે.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insured paid 93,750 rupees and 14,250 rupees are wrong."
+  },
+  {
+   "lang": "gu",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "તમારે લગભગ 71,00,000 રૂપિયા life cover વધારે જોઈશે.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will need approximately 71 lakh rupees for life cover."
+  },
+  {
+   "lang": "gu",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "રકમ 590 રૂપિયા, 1,250 રૂપિયા, 7,890 રૂપિયા, 12,345 રૂપિયા, 99,990 રૂપિયા અને 3,41,250 રૂપિયા છે.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The amount is 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees, and 341250 rupees."
+  },
+  {
+   "lang": "kn",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 ಶುಲ್ಕದೊಂದಿಗೆ, APR 17.7% ಇದೆ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of 7080 rupees, there is an APR of 17.7."
+  },
+  {
+   "lang": "kn",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "ನಿಮಗೆ 1,92,920 ರೂಪಾಯಿಗಳು ಸಿಗುತ್ತೆ ಮತ್ತು ತಿಂಗಳಿಗೆ 9,603 ರೂಪಾಯಿಗಳಂತೆ 2,30,472 ರೂಪಾಯಿಗಳನ್ನು ನೀವು ಮರುಪಾವತಿಸಬೇಕಾಗುತ್ತೆ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will receive one lakh ninety-two thousand nine hundred twenty rupees, and you will have to repay two lakh thirty thousand four hundred seventy-two rupees, which is nine thousand six hundred three rupees per month."
+  },
+  {
+   "lang": "kn",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% ಇದೆ, ತೋರಿಸಿರೋ 14% ಅಲ್ಲ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "There is a BR 21, not the 14 that is shown."
+  },
+  {
+   "lang": "kn",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan 1,00,000 ರೂಪಾಯಿಗಳು, ಒಂದು ದಿನಕ್ಕೆ 590 ರೂಪಾಯಿಗಳು, ಮತ್ತು APR 34.4% ಇದೆ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Working capital loan is one lakh rupees, five hundred ninety rupees per day and APR is thirty four point four."
+  },
+  {
+   "lang": "kn",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "ವಿಮಾ ಕಂಪನಿ 93,750 ರೂಪಾಯಿ ಕೊಟ್ಟಿದೆ, ಮತ್ತು 14,250 ರೂಪಾಯಿಗಳು ತಪ್ಪಾಗಿ ಕಾಣಿಸ್ತಿದೆ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurance company has given 93,750 rupees, and 14,250 rupees are showing incorrectly."
+  },
+  {
+   "lang": "kn",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "ನಿಮಗೆ ಸುಮಾರು 71,00,000 ರೂಪಾಯಿಗಳಷ್ಟು life cover ಬೇಕಾಗುತ್ತೆ.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will need approximately 71 lakh rupees worth of life cover."
+  },
+  {
+   "lang": "kn",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "ಆ ಮೊತ್ತಗಳು ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 ಮತ್ತು ₹3,41,250.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Those amounts are 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees, and 341250 rupees."
+  },
+  {
+   "lang": "ml",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 fee-ഉം കൂടി ചേർത്താൽ, APR 17.7% ആണ്.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "If you add the 7080 rupees fee, the APR is 17.7%."
+  },
+  {
+   "lang": "ml",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "താങ്കൾക്ക് ₹1,92,920 കിട്ടും, ₹2,30,472 repay ചെയ്യണം, ഒരു month-ന് ₹9,603.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You will receive one lakh ninety-two thousand nine hundred and twenty rupees. You need to repay two lakh thirty thousand four hundred and seventy-two rupees. For one month, it is nine thousand six hundred and three rupees."
+  },
+  {
+   "lang": "ml",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% ആണ്, കാണിച്ചിരിക്കുന്ന 14% അല്ല.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The PR is 21 percent. It is not the 14 percent shown."
+  },
+  {
+   "lang": "ml",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan ₹1,00,000 ആണ്, ഒരു ദിവസം ₹590 വീതം, APR 34.4% ആണ്.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is one lakh rupees. It is five hundred and ninety rupees per day. The APR is thirty-four point four percent."
+  },
+  {
+   "lang": "ml",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer ₹93,750 അടച്ചു, ₹14,250 തെറ്റാണെന്ന് തോന്നുന്നു.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer paid 93,750 rupees. It seems 14,250 rupees is wrong."
+  },
+  {
+   "lang": "ml",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "താങ്കൾക്ക് ഏകദേശം 71,00,000 രൂപയുടെ life cover കൂടി ആവശ്യമുണ്ട്.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You also need a life cover of approximately 71 lakh rupees."
+  },
+  {
+   "lang": "ml",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "തുകകൾ ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990, ₹3,41,250 എന്നിവയാണ്.",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The amounts are 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees, and 341250 rupees."
+  },
+  {
+   "lang": "od",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 ଫିସ୍‌ ସହିତ, APR 17.7% ଅଟେ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of seven thousand eighty rupees, the APR is seventeen point seven percent."
+  },
+  {
+   "lang": "od",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "ଆପଣ ₹1,92,920 ପାଆନ୍ତି ଏବଂ ମାସକୁ ₹9,603 ଲେଖାଏଁ ଦେଇ ₹2,30,472 ଫେରସ୍ତ କରନ୍ତି।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You receive one lakh ninety-two thousand nine hundred twenty rupees and pay two lakh thirty thousand four hundred seventy-two rupees back with nine thousand six hundred three rupees per month."
+  },
+  {
+   "lang": "od",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% ଅଟେ, ଦେଖାଯାଇଥିବା 14% ନୁହେଁ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "A PR is 21 percent, not the 14 percent that was seen."
+  },
+  {
+   "lang": "od",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "Working capital loan-ଟି ₹1,00,000, ଦିନକୁ ₹590 ହିସାବରେ, ଏବଂ APR 34.4% ଅଟେ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is one lakh rupees at five hundred ninety rupees per day and the APR is thirty-four point four percent."
+  },
+  {
+   "lang": "od",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer ₹93,750 ଦେଇଛନ୍ତି, ଆଉ ₹14,250-ଟା ଭୁଲ ଲାଗୁଛି।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer has given ninety-three thousand seven hundred fifty rupees, and fourteen thousand two hundred fifty rupees seems wrong."
+  },
+  {
+   "lang": "od",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "ଆପଣଙ୍କୁ ପ୍ରାୟ ₹71,00,000 ଅଧିକ life cover ଦରକାର।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You need approximately 7.1 million rupees more life cover."
+  },
+  {
+   "lang": "od",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "Amount-ଗୁଡ଼ିକ ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 ଏବଂ ₹3,41,250 ଅଟେ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Amounts are five hundred ninety rupees, one thousand two hundred fifty rupees, seven thousand eight hundred ninety rupees, twelve thousand three hundred forty-five rupees, ninety-nine thousand nine hundred ninety rupees, and three lakh forty-one thousand two hundred fifty."
+  },
+  {
+   "lang": "pa",
+   "english": "With the ₹7,080 fee, the APR is 17.7%.",
+   "native": "₹7,080 ਦੀ fee ਦੇ ਨਾਲ, APR 17.7% ਹੈ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "With a fee of 7080 rupees, the APR is 17.7%."
+  },
+  {
+   "lang": "pa",
+   "english": "You get ₹1,92,920 and repay ₹2,30,472, at ₹9,603 a month.",
+   "native": "ਤੁਹਾਨੂੰ ₹1,92,920 ਮਿਲਦੇ ਹਨ ਅਤੇ ₹2,30,472 ਵਾਪਸ ਕਰਨੇ ਪੈਂਦੇ ਹਨ, ਹਰ ਮਹੀਨੇ ₹9,603 'ਤੇ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You get 192,920 rupees and have to return 230,472 rupees. Every month, 9,603 rupees are deducted."
+  },
+  {
+   "lang": "pa",
+   "english": "The APR is 21%, not the 14% shown.",
+   "native": "APR 21% ਹੈ, 14% ਨਹੀਂ ਜੋ ਦਿਖਾਇਆ ਗਿਆ ਹੈ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The PR is 21 percent, not 14 percent as shown."
+  },
+  {
+   "lang": "pa",
+   "english": "The working capital loan is ₹1,00,000, at ₹590 a day, and the APR is 34.4%.",
+   "native": "working capital loan ₹1,00,000 ਦਾ ਹੈ, ਜੋ ਕਿ ਇੱਕ ਦਿਨ ਦੇ ₹590 'ਤੇ ਹੈ, ਅਤੇ APR 34.4% ਹੈ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The working capital loan is one lakh rupees, which is five hundred ninety rupees per day, and the APR is thirty-four point four percent."
+  },
+  {
+   "lang": "pa",
+   "english": "The insurer paid ₹93,750, and ₹14,250 looks wrong.",
+   "native": "Insurer ਨੇ ₹93,750 ਦਿੱਤੇ, ਅਤੇ ₹14,250 ਗਲਤ ਲੱਗ ਰਹੇ ਹਨ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "The insurer gave 93,750 rupees and 14,250 rupees are being charged wrongly."
+  },
+  {
+   "lang": "pa",
+   "english": "You need about ₹71,00,000 more life cover.",
+   "native": "ਤੁਹਾਨੂੰ ਲਗਭਗ ₹71,00,000 life cover ਹੋਰ ਚਾਹੀਦਾ ਹੈ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "You need approximately 7.1 million rupees more life cover."
+  },
+  {
+   "lang": "pa",
+   "english": "The amounts are ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 and ₹3,41,250.",
+   "native": "Amount ₹590, ₹1,250, ₹7,890, ₹12,345, ₹99,990 ਅਤੇ ₹3,41,250 ਹਨ।",
+   "textFence": true,
+   "spokenFence": true,
+   "missing": [],
+   "dateMisread": false,
+   "heard": "Amount 590 rupees, 1250 rupees, 7890 rupees, 12345 rupees, 99990 rupees and 341250 rupees."
+  }
+ ]
+}

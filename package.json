@@ -1,0 +1,28 @@
+{
+  "name": "mitra-financial-journeys",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MITRA: one AI agent for every financial journey. Paytm Build for India AI Hackathon, Track 2.",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite",
+    "dev:api": "node server/index.mjs",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test",
+    "start": "node --env-file=.env server/index.mjs",
+    "warm": "node --env-file=.env scripts/warm-demo-cache.mjs",
+    "preflight": "node --env-file=.env scripts/preflight.mjs"
+  },
+  "dependencies": {
+    "@met4citizen/talkinghead": "^1.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}
