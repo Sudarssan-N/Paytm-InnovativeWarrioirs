@@ -3,7 +3,8 @@
 // engine, and composes the reply from the engine's result. A model can choose a
 // tool. It cannot supply a figure, and no argument here is a number.
 import { SAMPLE_MESSAGES, CLAIM, INSURANCE_PLANS, ISSUED_POLICY, LOAN_OFFERS, MERCHANT_OFFER, MERCHANT_SALES, NEW_CLAIM, POLICY_WORDING } from './sampleData.js';
-import { coolingOffStatus, explainLoanOffer, foreclosureTerms, prepayVsInvest } from './engines/lending.js';
+import { amortisation, coolingOffStatus, explainLoanOffer, foreclosureTerms, prepayVsInvest } from './engines/lending.js';
+import { cashFlowWithLoan, comfortableLoan, declaredLine, feePctOf, incomeLine, statedProfile } from './engines/income.js';
 import { explainPlans, freeLookStatus, protectionGap } from './engines/insurance.js';
 import { claimChecklist, draftGrievance, explainDeductions } from './engines/claims.js';
 import { checkPaymentRequest, isOnlyAsking } from './engines/payments.js';
@@ -28,6 +29,8 @@ const offerArg = { type: 'object', additionalProperties: false, properties: { of
 const noArgs = { type: 'object', additionalProperties: false, properties: {} };
 // The customer's own document, once they have confirmed what MITRA read from it.
 const offerFor = (ctx) => ctx.session.documentOffer || LOAN_OFFERS[ctx.args.offer_id || OFFER_ID];
+// A shop's sales: pulled from its own Paytm account when connected, else the sample.
+const salesOf = (session) => session.paytm?.sales || MERCHANT_SALES;
 
 const parseCover = (text) => (/\b(no|none|nothing|don'?t have|zero|nil)\b|இல்லை|नहीं/i.test(text) ? 0 : parseAmount(text));
 
@@ -38,6 +41,8 @@ const NEED = {
     valid: (value) => value >= 1000 && value <= 100000000,
     invalid: (value) => `I heard ${inr(value)}. Did you mean ${inr(value * 1000)}? Please say your monthly income in rupees.`,
   }),
+  // Read from papers the customer uploaded and confirmed. Never asked for out loud.
+  incomeProfile: { field: 'incomeProfile', purpose: 'affordability', label: 'income from your papers', silent: true },
   dependants: {
     field: 'dependants', purpose: 'insurance_needs', label: 'dependants', parse: parseDependants, ask: 'How many people depend on your income?',
     valid: (value) => value >= 0 && value <= 20, invalid: () => 'I did not catch that. How many people depend on your income?',
@@ -53,6 +58,31 @@ const NEED = {
 };
 
 const purposeLine = () => 'Used only for this, for 30 days. You can withdraw it any time.';
+
+const FROM_PAPERS = { field: 'incomeProfile', purpose: 'affordability' };
+// Papers first; a number the customer said is the fallback, and labelled as their word.
+const profileFor = (ctx) => ctx.facts.incomeProfile ?? (ctx.facts.income ? statedProfile(ctx.facts.income) : null);
+const BAND_WORDS = { fits: 'fits comfortably', tight: 'is tight', stretch: 'is more than I would call safe' };
+
+// The charges people miss: what is cut before the money arrives, and what the KFS is silent on.
+function chargesToWatch(offer) {
+  const closing = foreclosureTerms(offer);
+  return [
+    { label: 'Processing fee', value: inr(offer.processingFee), note: 'Cut from the money before it reaches you', known: true },
+    { label: 'GST on the fee', value: inr(offer.gstOnFee), note: '18% of the fee, also cut before you get the money', known: true },
+    ...(offer.otherCharges ? [{ label: 'Other charges', value: inr(offer.otherCharges), note: 'Often bundled insurance. Ask if it is optional', known: true }] : []),
+    { label: 'Closing early', value: closing.known ? closing.terms : 'Not stated', note: closing.known ? 'From the KFS or the RBI rule' : 'Ask the lender before you sign', known: closing.known },
+    { label: 'Late or bounced EMI', value: offer.bounceCharge ? inr(offer.bounceCharge) : 'Not stated', note: 'A missed EMI usually costs a fee and hurts your credit score', known: Boolean(offer.bounceCharge) },
+  ];
+}
+
+const affordabilityCard = (profile, sim, maxLoan, offer) => ({
+  type: 'affordability',
+  data: {
+    profile: { ...profile, formula: profile.formula }, sim, maxLoan,
+    offer: { principal: offer.principal, ratePct: offer.ratePct, months: offer.months, feePct: feePctOf(offer), lender: offer.lender, product: offer.product },
+  },
+});
 
 // A loan the customer describes. MITRA must not answer with the sample offer, and
 // must not guess a term it was not told.
@@ -120,14 +150,16 @@ export const TOOLS = {
   // ── lending ──────────────────────────────────────────────────
   explain_loan_offer: {
     agent: 'lending', journey: 'lending', stage: 'explain', params: offerArg,
-    description: 'Explain what a loan offer really costs: APR beside the headline rate, EMI, total repayment and cooling-off.',
-    needs: [{ ...NEED.income('loan_eligibility', 'To check the EMI against your income, I need one number.'), optional: true, askAfter: true }],
+    description: 'Explain what a loan offer really costs: APR beside the headline rate, EMI, total repayment, hidden charges, the repayment schedule and cooling-off.',
+    needs: [NEED.incomeProfile, { ...NEED.income('loan_eligibility', 'To check the EMI against your income, I need one number.'), optional: true, askAfter: true, satisfiedBy: FROM_PAPERS }],
     run(ctx) {
       const stated = ctx.turn.resumedFrom ? null : parseLoanTerms(ctx.turn.textEn);
       if (stated?.mentioned) return ownLoanAnswer(ctx, stated);
       const offer = offerFor(ctx);
-      const income = ctx.facts.income ?? null;
-      const r = explainLoanOffer(offer, { income });
+      const papers = ctx.facts.incomeProfile ?? null;
+      const income = papers?.counted ?? ctx.facts.income ?? null;
+      const obligations = papers?.existingEmi ?? 0;
+      const r = explainLoanOffer(offer, { income, obligations });
       const share = r.fit ? Math.round(r.fit.sharePct) : null;
       remember(ctx.session, `APR ${pct(r.aprPct)} against a ${pct(r.ratePct)} headline rate`);
       if (r.fit) remember(ctx.session, `EMI ${inr(r.emi)}, ${share}% of income`);
@@ -135,20 +167,115 @@ export const TOOLS = {
       const exit = r.coolingOffDays ? `You can exit within ${r.coolingOffDays} days of signing, without penalty. Nothing is signed here.` : 'Nothing is signed here.';
       const statedApr = offer.statedApr != null && Math.abs(offer.statedApr - r.aprPct) > 0.25 ? offer.statedApr : null;
       const aprNote = statedApr != null ? ` The page states an APR of ${pct(statedApr)}, but counting every charge on it I get ${pct(r.aprPct)}. A person should check that with the lender.` : '';
-      const fitLine = r.fit && `The EMI of ${inr(r.emi)} is ${share}% of your ${inr(income)} income, which ${{ fits: 'fits comfortably', tight: 'is tight', stretch: 'is a stretch' }[r.fit.band]}.`;
+      const fitLine = r.fit && (papers
+        ? `With your existing EMI of ${inr(obligations)}, your EMIs would be ${share}% of the ${inr(income)} I count from your papers, which ${{ fits: 'fits comfortably', tight: 'is tight', stretch: 'is a stretch' }[r.fit.band]}.`
+        : `The EMI of ${inr(r.emi)} is ${share}% of your ${inr(income)} income, which ${{ fits: 'fits comfortably', tight: 'is tight', stretch: 'is a stretch' }[r.fit.band]}.`);
       return {
         reply: fitLine && ctx.turn.resumedFrom
           ? `${fitLine} ${exit}`
           : fitLine ? `${full}${aprNote} ${fitLine} ${exit}` : ctx.turn.resumedFrom ? `${full}${aprNote} ${exit}` : `${full}${aprNote}`,
         simple: `You get ${inr(r.net)} today and pay back ${inr(r.totalRepay)}. So this loan costs you ${inr(r.totalCost)} in all.`,
         replyHi: `इस पर ${pct(r.ratePct)} ब्याज दिखता है। ${inr(r.fees)} की फ़ीस जोड़ने पर असली सालाना लागत यानी APR ${pct(r.aprPct)} है। आपको ${inr(r.net)} मिलेंगे और ${r.months} महीनों में ${inr(r.totalRepay)} लौटाने होंगे। EMI ${inr(r.emi)} है। साइन करने के बाद ${r.coolingOffDays} दिन तक बिना पेनल्टी निकल सकते हैं।`,
-        card: { type: 'loan', data: { ...r, income, sharePct: share, lender: offer.lender, product: offer.product, statedApr, fromDocument: Boolean(offer.fromDocument), otherCharges: offer.otherCharges } },
-        chips: ['Show me this loan as a game', 'Can I close the loan early without a penalty?', 'Should I prepay or invest ₹50,000?', 'I will take this loan', 'Talk to a person'],
+        card: { type: 'loan', data: {
+          ...r, income, sharePct: share, lender: offer.lender, product: offer.product, statedApr, fromDocument: Boolean(offer.fromDocument), otherCharges: offer.otherCharges,
+          incomeFromPapers: Boolean(papers), obligations, schedule: amortisation(offer.principal, offer.ratePct, offer.months), charges: chargesToWatch(offer),
+        } },
+        chips: ['Can I afford this loan?', 'What if I take it for 36 months?', 'Show me this loan as a game', 'Can I close the loan early without a penalty?', 'I will take this loan', 'Talk to a person'],
         passport: {
           title: offer.fromDocument ? `${offer.product} explained, from the customer’s own document` : 'Personal loan offer explained', evidence: r.evidence, formula: r.formula, result: `${pct(r.aprPct)} APR`,
           pack: r.pack, action: 'Explained, not executed', consent: consentStamps(ctx, income ? ['loan_eligibility'] : []),
         },
-        computed: { ...r, share, income, statedApr },
+        computed: { ...r, share, income, statedApr, obligations },
+      };
+    },
+  },
+  check_affordability: {
+    agent: 'lending', journey: 'lending', stage: 'explain', params: offerArg,
+    description: 'How much the customer can safely borrow, what EMI they can afford, or whether a loan fits their income, especially irregular, gig or shop income. Uses the income papers they shared: bank statements, receipts, tax returns.',
+    needs: [NEED.incomeProfile, { ...NEED.income('loan_eligibility', 'Or, if you prefer, just one number.'), optional: true, askAfter: true, satisfiedBy: FROM_PAPERS }],
+    run(ctx) {
+      const offer = offerFor(ctx);
+      const profile = profileFor(ctx);
+      if (!profile) {
+        return {
+          reply: 'To see what you can safely borrow, I need to see what you really earn. Tap Read my income papers and share your bank statements, UPI receipts or tax return. No salary slip is needed.',
+          card: { type: 'note', data: { title: 'No salary slip? That is fine', body: 'MITRA reads bank statements, UPI receipts and tax returns, adds up every way you earn, and counts your weaker months, so the EMI still fits in a slow month. You check every line before it is used.', tone: 'info' } },
+          chips: ['Talk to a person'], computed: {},
+        };
+      }
+      const feePct = feePctOf(offer);
+      const sim = cashFlowWithLoan(profile, { principal: offer.principal, ratePct: offer.ratePct, months: offer.months, feePct });
+      const maxLoan = comfortableLoan(profile, { ratePct: offer.ratePct, months: offer.months });
+      const weakest = sim.monthly.reduce((low, month) => (!low || month.income < low.income ? month : low), null);
+      const weakShare = weakest && weakest.income > 0 ? Number((((weakest.emi + weakest.existing) / weakest.income) * 100).toFixed(1)) : null;
+      ctx.session.decisions.affordability = { counted: profile.counted, comfortableEmi: profile.comfortableEmi, maxLoan };
+      remember(ctx.session, `Income counted ${inr(profile.counted)} a month, safe EMI up to ${inr(profile.comfortableEmi)}`);
+
+      const safe = `${profile.existingEmi ? `After your existing EMI of ${inr(profile.existingEmi)}, an EMI` : 'An EMI'} up to ${inr(profile.comfortableEmi)} is comfortable, and ${inr(profile.stretchEmi)} is the most I would call safe.`;
+      const offerLine = ` This offer's EMI of ${inr(sim.emi)} ${BAND_WORDS[sim.band]}.`;
+      const weakLine = weakest && profile.monthCount > 1 ? ` In your weakest month, ${weakest.label}, all your EMIs would have taken ${pct(weakShare)} of what came in.` : '';
+      const room = maxLoan > 0 ? ` At this offer's rate and term, up to about ${inr(maxLoan)} keeps the EMI comfortable.` : ' Your existing EMIs already use the safe share of your income, so I would not add another loan now.';
+      const history = profile.basis === 'statements' && !profile.enoughHistory ? ` I only have ${profile.monthCount} months of statements, and lenders usually want at least ${profile.minMonths}.` : '';
+      const evidence = [
+        ...(profile.documents || []).map((doc) => ({ field: doc.kindLabel, value: `sha256 ${doc.hash.slice(0, 16)}…`, source: doc.name, asOf: ctx.today })),
+        ...profile.streams.map((stream) => ({ field: stream.label, value: `${inr(stream.monthly)} a month`, source: 'Confirmed by the customer', asOf: ctx.today })),
+        ...(profile.basis === 'stated' ? [{ field: 'Income', value: inr(profile.counted), source: 'Customer said', asOf: ctx.today }] : []),
+        { field: 'Income counted', value: `${inr(profile.counted)} a month`, source: 'Income engine', asOf: ctx.today },
+      ];
+      return {
+        reply: `${incomeLine(profile)} ${safe}${offerLine}${weakLine}${room}${history}${declaredLine(profile)}`,
+        simple: `I count ${inr(profile.counted)} a month as your safe income. Keep all your EMIs under ${inr(profile.comfortableEmi + profile.existingEmi)} a month.`,
+        card: affordabilityCard(profile, sim, maxLoan, offer),
+        chips: ['What if I take it for 36 months?', 'What does this loan really cost?', 'Explain it more simply', 'Talk to a person'],
+        passport: {
+          title: profile.basis === 'stated' ? 'Affordability worked out from the income the customer said' : 'Affordability worked out from the customer’s own papers',
+          evidence, formula: profile.formula, result: `Safe EMI up to ${inr(profile.comfortableEmi)}, offer EMI ${inr(sim.emi)} ${sim.band}`,
+          pack: profile.pack, action: 'Explained, not executed', consent: consentStamps(ctx, [profile.basis === 'stated' ? 'loan_eligibility' : 'affordability']),
+        },
+        computed: { profile, sim, maxLoan, weakShare, weakest, comfortableAll: profile.comfortableEmi + profile.existingEmi },
+      };
+    },
+  },
+  simulate_terms: {
+    agent: 'lending', journey: 'lending', stage: 'decide', params: offerArg,
+    description: 'What changes with a different loan amount or a longer or shorter term, a lower EMI, or any "what if" about the loan terms.',
+    needs: [NEED.incomeProfile, { ...NEED.income('loan_eligibility', ''), silent: true }],
+    run(ctx) {
+      const offer = offerFor(ctx);
+      const profile = profileFor(ctx);
+      const text = ctx.turn.textEn;
+      const stated = parseLoanTerms(text);
+      let months = stated.months ?? offer.months;
+      if (!stated.months && /\b(lower|smaller|less|reduce\w*)\b.{0,20}\b(emi|instal\w*)\b|\blonger\b/i.test(text)) months = offer.months + 12;
+      if (!stated.months && /\b(shorter|faster|sooner|quicker)\b/i.test(text)) months = offer.months - 12;
+      months = Math.min(Math.max(Math.round(months), 3), 84);
+      const principal = Math.min(Math.max(stated.principal ?? offer.principal, 5000), 50000000);
+      const ratePct = stated.ratePct ?? offer.ratePct;
+      const feePct = feePctOf(offer);
+      const base = cashFlowWithLoan(profile, { principal: offer.principal, ratePct: offer.ratePct, months: offer.months, feePct });
+      const sim = cashFlowWithLoan(profile, { principal, ratePct, months, feePct });
+      const emiChange = Math.abs(sim.emi - base.emi), costChange = Math.abs(sim.totalCost - base.totalCost);
+      const emiWords = sim.emi === base.emi ? 'the same as the offer' : `${inr(emiChange)} ${sim.emi < base.emi ? 'less' : 'more'} than the offer's ${inr(base.emi)}`;
+      const costWords = sim.totalCost === base.totalCost ? 'the same as the offer' : `${inr(costChange)} ${sim.totalCost > base.totalCost ? 'more' : 'less'} than the offer`;
+      const why = sim.totalCost > base.totalCost && sim.emi < base.emi ? ', because you pay interest for longer' : '';
+      const left = profile ? ` After all your EMIs, about ${inr(sim.leftOver)} is left from the ${inr(profile.counted)} I count each month, so it ${BAND_WORDS[sim.band]}.` : ' Share your income papers, and I will check it against what you earn.';
+      const tight = profile && sim.tightMonths ? ` It would have been tight in ${sim.tightMonths} of your ${profile.monthCount} months.` : '';
+      remember(ctx.session, `Tried ${inr(principal)} over ${months} months: EMI ${inr(sim.emi)}`);
+      return {
+        reply: `${inr(principal)} over ${months} months: the EMI is ${inr(sim.emi)}, ${emiWords}. In all, the loan costs you ${inr(sim.totalCost)}. That is ${costWords}${why}.${left}${tight}`,
+        simple: `You would pay ${inr(sim.emi)} a month for ${months} months.`,
+        card: { type: 'simulator', data: { profile, sim, base, offer: { principal: offer.principal, ratePct: offer.ratePct, months: offer.months, feePct, lender: offer.lender, product: offer.product } } },
+        chips: ['Can I afford this loan?', 'What does this loan really cost?', 'I will take this loan', 'Talk to a person'],
+        passport: {
+          title: 'Loan terms tried out', evidence: [
+            { field: 'Key Fact Statement', value: `${pct(offer.ratePct)}, fees ${pct(feePct, 2)} of the amount`, source: offer.id, asOf: offer.issuedOn },
+            { field: 'Customer asked', value: ctx.turn.text.slice(0, 200), source: 'Customer', asOf: ctx.today },
+            ...(profile ? [{ field: 'Income counted', value: inr(profile.counted), source: profile.basis === 'stated' ? 'Customer said' : 'Customer’s own papers', asOf: ctx.today }] : []),
+          ],
+          formula: sim.formula, result: `${inr(principal)} over ${months} months: EMI ${inr(sim.emi)}, cost ${inr(sim.totalCost)}`,
+          pack: packStamp(PACKS.lending), action: 'Explained, not executed',
+        },
+        computed: { sim, base, emiChange, costChange, counted: profile?.counted ?? null, monthCount: profile?.monthCount ?? null },
       };
     },
   },
@@ -445,7 +572,7 @@ export const TOOLS = {
       if (ctx.session.customer.kind !== 'merchant') {
         return { reply: 'I only have sales for a shop that has connected its Soundbox, and there is none on this call. I can help with a loan, insurance, a claim or a payment.', card: null, chips: ['What does this loan really cost?', 'Talk to a person'], computed: {} };
       }
-      const { months, source } = MERCHANT_SALES;
+      const { months, source } = salesOf(ctx.session);
       const last = months.at(-1), before = months.at(-2);
       const change = Math.round(((last.sales - before.sales) / before.sales) * 1000) / 10;
       const best = months.reduce((top, month) => (month.sales > top.sales ? month : top), months[0]);
@@ -462,18 +589,66 @@ export const TOOLS = {
     description: 'Check a shopkeeper’s working capital eligibility from their consented Soundbox sales summary and explain the offer.',
     needs: [{ field: 'salesSummary', purpose: 'merchant_credit', label: 'Soundbox sales summary', ask: 'May I look at your Soundbox sales summary?' }],
     run(ctx) {
-      const eligibility = merchantEligibility(MERCHANT_SALES);
+      const sales = salesOf(ctx.session);
+      const eligibility = merchantEligibility(sales);
+      // Real sales can fall short of the rules. Then MITRA says so and offers nothing.
+      if (!eligibility.eligible) {
+        const r = { months: eligibility.monthCount, needed: PACKS.merchant.assumptions.minActiveMonths, source: sales.source };
+        return {
+          reply: `Paytm shows ${r.months} months of your sales, and a working capital check needs ${r.needed}. I can look at how your business is doing in the meantime.`,
+          card: { type: 'note', data: { title: 'Not enough months yet', body: `${r.months} of ${r.needed} months of sales. Source: ${r.source}.`, tone: 'warn' } },
+          chips: ['How is my business doing?', 'Talk to a person'], computed: r,
+        };
+      }
       const r = explainMerchantOffer(MERCHANT_OFFER, eligibility);
       ctx.session.decisions.merchant = { eligibility, offer: r };
       remember(ctx.session, `Working capital: ${inr(r.principal)} at ${pct(r.aprPct)} APR, ${inr(r.dailyRepayment)} a day`);
+      const caution = [
+        !r.withinLimit && `This offer is above the ${inr(eligibility.limit)} your sales support.`,
+        !r.fits && `${inr(r.dailyRepayment)} a day is ${pct(r.shareOfDailySales)} of a usual day's sales, more than MITRA counts as comfortable.`,
+      ].filter(Boolean).join(' ');
       return {
-        reply: `Your Soundbox sales average ${inr(eligibility.averageMonthly)} a month, so you may get up to ${inr(eligibility.limit)}. One offer: you get ${inr(r.net)} and pay ${inr(r.dailyRepayment)} a day for ${r.days} days. The real yearly cost is ${pct(r.aprPct)}. Shall I prepare a brief for the lender, with no form?`,
+        reply: `Your ${sales.live ? 'Paytm' : 'Soundbox'} sales average ${inr(eligibility.averageMonthly)} a month, so you may get up to ${inr(eligibility.limit)}. One offer: you get ${inr(r.net)} and pay ${inr(r.dailyRepayment)} a day for ${r.days} days. The real yearly cost is ${pct(r.aprPct)}.${caution ? ` ${caution}` : ''} Shall I prepare a brief for the lender, with no form?`,
         simple: `You get ${inr(r.net)} now and pay ${inr(r.dailyRepayment)} every day for ${r.days} days.`,
         replyHi: `आपकी साउंडबॉक्स बिक्री औसतन ${inr(eligibility.averageMonthly)} महीना है। आपको ${inr(eligibility.limit)} तक मिल सकते हैं। एक ऑफ़र ${inr(r.principal)} का है, ${r.days} दिनों के लिए, ${inr(r.dailyRepayment)} रोज़। असली सालाना लागत ${pct(r.aprPct)} है। क्या मैं लेंडर को आपकी जानकारी भेजूँ?`,
         card: { type: 'merchant', data: { ...r, eligibility } }, chips: ['Yes, send it to the lender', 'No, not now', 'Talk to a person'],
         confirm: { tool: 'send_lender_brief', args: {} },
         passport: { title: 'Working capital explained', evidence: r.evidence, formula: r.formula, result: `${pct(r.aprPct)} APR, ${inr(r.dailyRepayment)} a day`, pack: r.pack, action: 'Explained, not executed', consent: consentStamps(ctx, ['merchant_credit']) },
         computed: { ...r, eligibility },
+      };
+    },
+  },
+  merchant_insights: {
+    agent: 'merchant', journey: 'merchant', stage: 'explain', params: noArgs, merchantOnly: true,
+    description: 'A shopkeeper asks how their business is doing overall, or for advice, tips or suggestions, read from their Paytm orders, refunds, settlements and payment links.',
+    needs: [{ field: 'salesSummary', purpose: 'business_insights', label: 'Paytm orders, refunds and settlements', ask: 'May I look at your Paytm orders, refunds and settlements, only to see how your business is doing?' }],
+    run(ctx) {
+      const paytm = ctx.session.paytm;
+      if (!paytm?.insights) {
+        return { reply: 'There are no Paytm records on this call, so I cannot profile your business yet. I can still check working capital from your sales summary.', card: null, chips: ['I need money for stock for my shop', 'Talk to a person'], computed: {} };
+      }
+      const { profile: p, segments, suggestions: list, pack, sample } = paytm.insights;
+      const top = list.slice(0, 2);
+      // Only the first letter drops, so "Paytm" and "UPI" keep their capitals mid-sentence.
+      const inline = (text) => text.charAt(0).toLowerCase() + text.slice(1);
+      const r = { ...paytm.insights, live: paytm.live, source: paytm.source, pulledAt: paytm.pulledAt };
+      remember(ctx.session, `Business profile: ${segments.map((s) => s.label).join(', ')}`);
+      return {
+        reply: `Over ${p.coverage.monthCount} months, ${sample ? 'the sample records show' : 'Paytm shows'} ${inr(p.averageMonthly)} of sales a month from ${p.payments.toLocaleString('en-IN')} payments, ${inr(p.averageTicket)} each on average. In short: ${segments.slice(0, 3).map((s) => inline(s.label)).join(', ')}. ${top.length ? `Worth your attention: ${top.map((s) => inline(s.title)).join('; and ')}. The details are on your screen.` : 'Nothing needs your attention right now.'}`,
+        simple: top.length ? `Your shop does ${inr(p.averageMonthly)} a month. First thing to look at: ${inline(top[0].title)}.` : `Your shop does ${inr(p.averageMonthly)} a month, and nothing needs your attention right now.`,
+        card: { type: 'insights', data: r },
+        chips: [...new Set([...top.map((s) => s.ask).filter(Boolean), 'How much did I sell this month?', 'That is all, thank you'])].slice(0, 3),
+        passport: {
+          title: 'Business profiled from Paytm records',
+          evidence: [
+            { field: 'Orders', value: `${p.coverage.orders} records, ${p.coverage.from} to ${p.coverage.to}`, source: paytm.source, asOf: (paytm.pulledAt || ctx.today).slice(0, 10) },
+            { field: 'Refunds', value: `${p.coverage.refunds} records`, source: paytm.source, asOf: (paytm.pulledAt || ctx.today).slice(0, 10) },
+            { field: 'Settlements', value: `${p.coverage.settlements} records`, source: paytm.source, asOf: (paytm.pulledAt || ctx.today).slice(0, 10) },
+          ],
+          formula: 'Sales = successful orders by month, India time. Every rate and share is counted from the same records',
+          result: segments.map((s) => s.label).join(', '), pack, action: 'Analysed, not executed', consent: consentStamps(ctx, ['business_insights']),
+        },
+        computed: r,
       };
     },
   },
@@ -489,7 +664,7 @@ export const TOOLS = {
       return {
         reply: `Your brief is ready, and you did not fill any form. The lender would call you to confirm and read the Key Fact Statement. You sign only with them.`,
         card: { type: 'lenderBrief', data: r }, chips: ['How long is the cooling-off?', 'That is all, thank you'],
-        passport: { title: 'Lender brief prepared', evidence: [{ field: 'Sales summary', value: MERCHANT_SALES.source, source: 'Consented data', asOf: ctx.today }], formula: 'Brief assembled from the sealed explanation', result: `${inr(r.amount)} requested`, pack: packStamp(PACKS.merchant), action: 'Drafted, not sent', consent: consentStamps(ctx, ['merchant_credit']) },
+        passport: { title: 'Lender brief prepared', evidence: [{ field: 'Sales summary', value: salesOf(ctx.session).source, source: 'Consented data', asOf: ctx.today }], formula: 'Brief assembled from the sealed explanation', result: `${inr(r.amount)} requested`, pack: packStamp(PACKS.merchant), action: 'Drafted, not sent', consent: consentStamps(ctx, ['merchant_credit']) },
         computed: r,
       };
     },

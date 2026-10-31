@@ -85,6 +85,39 @@ export const PACKS = Object.freeze({
     assumptions: Object.freeze({ minActiveMonths: 6, maxOfAverageMonthlySales: 0.5, maxDailyRepaymentOfDailySalesPct: 15 }),
     sources: Object.freeze(['RBI digital lending rules, May 2025 edition']),
   }),
+  // Reading income that does not come as a salary slip. Every number here is MITRA's
+  // own default, labelled on screen; a partner lender would replace them.
+  income: Object.freeze({
+    id: 'mitra-income-2026',
+    label: 'Income from bank statements, receipts and tax returns, 2026',
+    asOf: '2026-10-01',
+    rules: Object.freeze({}),
+    assumptions: Object.freeze({
+      minMonths: 3,
+      weakMonths: 3,
+      roundTo: 100,
+      emiComfortablePct: 30,
+      emiStretchPct: 40,
+      declaredGapPct: 25,
+      steadyBelowPct: 15,
+      unevenBelowPct: 30,
+    }),
+    // Matched against the narration on a statement line. Order matters: a refund
+    // from a platform is not a payout from it.
+    credits: Object.freeze({
+      excluded: Object.freeze(['self transfer', 'own account', 'refund', 'reversal', 'reversed', 'loan disburs\\w*', 'cashback', 'int\\.? cr', 'interest']),
+      salary: Object.freeze(['salary', 'sal cr', 'payroll']),
+      platform: Object.freeze(['payouts?', 'earnings', 'driver', 'rider', 'delivery partner', 'incentive']),
+      cash: Object.freeze(['cash deposit', 'cash dep', 'cdm', 'by cash']),
+      upi: Object.freeze(['upi', 'settlement', 'soundbox', 'pos', 'card sale', 'qr']),
+    }),
+    debits: Object.freeze({
+      emi: Object.freeze(['emi', 'loan', 'ach', 'nach', 'ecs']),
+      business: Object.freeze(['wholesale', 'distributors?', 'traders', 'supplier', 'purchase', 'stock', 'agencies']),
+      rent: Object.freeze(['rent']),
+    }),
+    sources: Object.freeze(['RBI digital lending rules, May 2025 edition', 'MITRA defaults for alternative income']),
+  }),
   privacy: Object.freeze({
     id: 'dpdp-2025',
     label: 'DPDP Act 2023 and Rules 2025',

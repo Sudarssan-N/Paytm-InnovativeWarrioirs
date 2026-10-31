@@ -6,10 +6,10 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 async function start() {
   await loadAiStatus();
-  const { default: JourneyApp } = await import('./journeys/ui/JourneyApp.jsx');
+  const { default: AuthGate } = await import('./journeys/ui/Auth.jsx');
   createRoot(document.getElementById('root')).render(
     <React.StrictMode>
-      <ErrorBoundary><JourneyApp /></ErrorBoundary>
+      <ErrorBoundary><AuthGate /></ErrorBoundary>
     </React.StrictMode>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { InsightsView } from './PaytmInsights.jsx';
 
 // What is really connected to Paytm right now, checked live. Nothing here is assumed.
 const SURFACES = [
-  { name: 'Paytm MCP server', how: 'Official hosted server. Real payment links, settlements and refunds on the merchant’s own account.', tag: 'Live, needs a merchant sign-in', live: true },
+  { name: 'Paytm MCP server', how: 'Official hosted server. Orders, refunds, settlements and payment links are read to profile the business and suggest next steps. A payment link is the only thing it can create.', tag: 'Live, needs a merchant sign-in', live: true },
   { name: 'UPI QR and payment links', how: 'Any upi:// link or QR is read here and checked by Offer X-Ray before the PIN.', tag: 'Works today', live: true },
   { name: 'Paytm app, as a Mini App', how: 'MITRA is a web app, so it can open inside the Consumer or Business app with one-tap login.', tag: 'Needs Paytm onboarding' },
   { name: 'The KFS step of a loan', how: 'An “Explain this in my language” button beside the Key Fact Statement, then back to the same step.', tag: 'Proposed' },
@@ -27,7 +28,21 @@ export default function PaytmPanel() {
   const [amount, setAmount] = useState('1');
   const [note, setNote] = useState('');
   const [link, setLink] = useState(null);
+  const [insights, setInsights] = useState(null);
+  const [pulling, setPulling] = useState('');
   const failed = new URLSearchParams(window.location.search).get('reason');
+
+  // Reading six months takes many calls, so the first pull can take a while.
+  const pull = useCallback(async ({ refresh = false, sample = false } = {}) => {
+    setPulling(sample ? 'Loading the sample…' : refresh ? 'Pulling fresh records from Paytm…' : 'Reading your Paytm records…');
+    try {
+      const res = await fetch(sample ? '/api/paytm/profile?sample=1' : refresh ? '/api/paytm/sync' : '/api/paytm/profile', { method: refresh ? 'POST' : 'GET' });
+      const out = await res.json();
+      if (!res.ok) throw new Error(out.title);
+      setInsights(out);
+      setPulling('');
+    } catch (error) { setPulling(error.message); }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -36,9 +51,10 @@ export default function PaytmPanel() {
       if (data.connected) {
         const res = await fetch('/api/paytm/tools');
         if (res.ok) setTools((await res.json()).tools);
+        pull();
       }
     } catch { setStatus({ reachable: false }); }
-  }, []);
+  }, [pull]);
   useEffect(() => { load(); }, [load]);
 
   const createLink = async (event) => {
@@ -80,6 +96,21 @@ export default function PaytmPanel() {
           </form>
           {note && <p className="j-side-note">{note}</p>}
           {link && <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11 }}>{link}</pre>}
+        </>
+      )}
+      <h3>Your business, from Paytm</h3>
+      <div className="pi-panel-actions">
+        {status?.connected && <button type="button" className="j-side-btn" onClick={() => pull({ refresh: true })} disabled={Boolean(pulling) && !insights}>Pull fresh records</button>}
+        {status && !status.connected && <button type="button" className="j-side-btn" onClick={() => pull({ sample: true })}>See it with sample records</button>}
+      </div>
+      {pulling && <p className="j-side-note">{pulling}</p>}
+      {insights && (
+        <>
+          <p className="j-side-note">
+            {insights.sample ? 'Sample records in Paytm’s format. Nothing here came from Paytm.'
+              : `Read from ${Object.values(insights.tools || {}).filter(Boolean).join(', ') || 'no tools'}${insights.calls ? ` in ${insights.calls} calls` : ''}. Payer ids are kept only as a hash.`}
+          </p>
+          <InsightsView data={insights} />
         </>
       )}
       <h3>Where MITRA fits in Paytm</h3>

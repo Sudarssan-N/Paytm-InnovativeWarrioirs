@@ -1,0 +1,44 @@
+/* Business insights from Paytm data. Colours come from the journey tokens in journeys.css. */
+.pi { display: grid; gap: 10px; }
+
+.pi-segments { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+.pi-segments li { display: grid; align-content: start; padding: 5px 10px; border-radius: 10px; background: var(--j-line-soft); }
+.pi-segments b { font-size: 12.5px; color: var(--j-navy); }
+.pi-segments small { font-size: 11px; color: var(--j-soft); }
+
+/* One series: one hue, 4px rounded tops on the baseline, 2px gaps, a quiet axis. */
+.pi-bars { margin: 6px 0 0; position: relative; }
+.pi-bars-plot { display: flex; align-items: flex-end; gap: 2px; height: 120px; border-bottom: 1px solid var(--j-line); }
+.pi-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; cursor: default; outline: none; }
+.pi-bar i { display: block; width: min(70%, 34px); background: var(--j-cyan-ink); border-radius: 4px 4px 0 0; opacity: .85; transition: opacity .12s; }
+.pi-bar.is-hover i, .pi-bar:focus-visible i { opacity: 1; }
+.pi-bar-label { font-size: 11px; font-weight: 600; color: var(--j-ink); margin-bottom: 3px; white-space: nowrap; }
+.pi-bars-axis { display: flex; gap: 2px; }
+.pi-bars-axis span { flex: 1; text-align: center; font-size: 11px; color: var(--j-soft); padding-top: 4px; }
+.pi-tip { position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 2; display: grid; gap: 1px; padding: 6px 9px; border-radius: 8px; background: var(--j-deep); color: #fff; font-size: 12px; white-space: nowrap; pointer-events: none; }
+.pi-bar:first-child .pi-tip { left: 0; transform: none; }
+.pi-bar:last-child .pi-tip { left: auto; right: 0; transform: none; }
+.pi-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.pi-modes { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 7px; }
+.pi-modes li { display: grid; grid-template-columns: 92px 1fr auto; align-items: center; gap: 8px; font-size: 12.5px; }
+.pi-mode-name { color: var(--j-ink); }
+.pi-mode-track { height: 8px; border-radius: 4px; background: var(--j-line-soft); overflow: hidden; }
+.pi-mode-track i { display: block; height: 100%; background: var(--j-cyan-ink); border-radius: 0 4px 4px 0; }
+.pi-mode-value { font-weight: 600; color: var(--j-ink); text-align: right; min-width: 54px; }
+.pi-mode-value small { display: block; font-weight: 400; color: var(--j-soft); font-size: 11px; }
+
+.pi-suggestions { display: grid; gap: 8px; }
+.pi-suggestion { border-radius: 12px; padding: 10px 13px; font-size: 13px; border: 1px solid var(--j-line); background: var(--j-surface); }
+.pi-suggestion p { margin: 0; }
+.pi-suggestion-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px !important; }
+.pi-suggestion-head span { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
+.pi-suggestion.is-warn { background: var(--j-amber-tint); border-color: transparent; color: var(--j-amber-ink); }
+.pi-suggestion.is-warn .pi-suggestion-head span { background: rgb(255 255 255 / .6); }
+.pi-suggestion.is-info .pi-suggestion-head span { background: var(--j-cyan-tint); color: var(--j-cyan-ink); }
+.pi-suggestion.is-ok .pi-suggestion-head span { background: var(--j-green-tint); color: var(--j-green); }
+.pi-ask { margin-top: 8px; border: 1px solid var(--j-navy); background: none; color: var(--j-navy); border-radius: 99px; padding: 4px 12px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+
+.pi-notes { margin: 0; padding-left: 18px; font-size: 12px; color: var(--j-soft); }
+
+.pi-panel-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { readStore } from './store.mjs';
 import { aiStatus, proxySarvam } from './aiProxy.mjs';
 import { flushSessions, handleJourney } from './journeyApi.mjs';
+import { handleAuth } from './accounts.mjs';
 import { serveStatic } from './staticFiles.mjs';
 import { acceptStream, handlePhone } from './telephony.mjs';
 import { handleVoice } from './voiceStream.mjs';
@@ -53,6 +54,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, store ? 200 : 503, { ready: Boolean(store), store: Boolean(store), sarvamConfigured: voiceReady, degraded: open, note: open.length || !voiceReady ? 'Running on engines and rules: voice or model is unavailable' : 'All systems normal' });
     }
     if (!url.pathname.startsWith('/api/')) return serveStatic(req, res, url);
+    if (url.pathname.startsWith('/api/auth/')) return await handleAuth(req, res, url);
     if (url.pathname.startsWith('/api/journey')) return await handleJourney(req, res, url);
     if (url.pathname.startsWith('/api/phone')) return await handlePhone(req, res, url);
     if (url.pathname.startsWith('/api/voice/')) return await handleVoice(req, res, url);

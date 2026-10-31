@@ -6,10 +6,11 @@ import { recordUtterance, canRecord } from '../../engine/recorder.js';
 import { sarvamStreamUrl, transcribe, verifySpoken } from '../../engine/sarvam.js';
 import { isAssistantEcho, speak, stopSpeaking } from '../../engine/speech.js';
 import { scriptLanguage } from '../../engine/languageDetect.js';
+import { authHeaders } from './auth.js';
 
 async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch(`/api/journey${path}`, {
-    method, headers: body ? { 'content-type': 'application/json' } : undefined,
+    method, headers: { ...(body ? { 'content-type': 'application/json' } : {}), ...authHeaders() },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
@@ -179,6 +180,40 @@ export function useJourney({ modelOff, chaos, consumeChaos, handsFree, setVoiceN
     }
   }, [apply]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Income papers: several at once, read together, then checked line by line.
+  const readIncome = useCallback(async (files) => {
+    if (!sessionId.current || !files.length) return;
+    stopSpeaking();
+    setPhase('thinking');
+    setError('');
+    try {
+      const payload = await Promise.all(files.slice(0, 5).map((file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve({ name: file.name, mime: file.type, data: String(reader.result).split(',')[1] });
+        reader.onerror = () => reject(new Error(`Could not open ${file.name}`));
+        reader.readAsDataURL(file);
+      })));
+      const turn = await postJourney(`/${sessionId.current}/income`, { files: payload });
+      addMessage({ from: 'customer', native: `📑 ${files.map((file) => file.name).join(', ')}`, lang: null });
+      apply(turn);
+    } catch (problem) {
+      setError(problem.message);
+      setPhase('your-turn');
+    }
+  }, [apply]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const confirmIncome = useCallback(async (accept, edits = []) => {
+    if (!sessionId.current) return;
+    stopSpeaking();
+    setPhase('thinking');
+    try {
+      apply(await postJourney(`/${sessionId.current}/income/confirm`, { accept, edits }));
+    } catch (problem) {
+      setError(problem.message);
+      setPhase('your-turn');
+    }
+  }, [apply]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const send = useCallback(async (text, { tapped = false, spoken = null } = {}) => {
     const words = String(text || '').trim();
     if (!words || !sessionId.current) return;
@@ -322,5 +357,5 @@ export function useJourney({ modelOff, chaos, consumeChaos, handsFree, setVoiceN
 
   useEffect(() => () => { live.current = false; clearInterval(watchTimer.current); recorder.current?.abort?.(); stopSpeaking(); traceTimers.current.forEach(clearTimeout); }, []);
 
-  return { readDocument, confirmDocument, checkCall, status, state, setState, messages, cards, chips, trace, secs, level, voiceOn, error, start, end, send, micPress, toggleVoice, watchPhone };
+  return { readDocument, confirmDocument, readIncome, confirmIncome, checkCall, status, state, setState, messages, cards, chips, trace, secs, level, voiceOn, error, start, end, send, micPress, toggleVoice, watchPhone };
 }

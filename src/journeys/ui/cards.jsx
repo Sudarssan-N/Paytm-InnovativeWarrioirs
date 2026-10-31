@@ -1,14 +1,8 @@
 import React from 'react';
 import { fmtDate, inr, pct } from '../money.js';
-
-const Row = ({ label, value, sub, strong }) => (
-  <div className="j-row">
-    <span className="j-row-label">{label}</span>
-    <span className="j-row-value"><span className={strong ? 'is-strong' : ''}>{value}</span>{sub && <small>{sub}</small>}</span>
-  </div>
-);
-
-const Foot = ({ children = 'MITRA explains. You decide. Nothing is signed here.' }) => <p className="j-card-foot">{children}</p>;
+import { Foot, Row } from './cardParts.jsx';
+import { AffordabilityCard, IncomeReadCard, SimulatorCard } from './LoanClarity.jsx';
+import { InsightsCard } from './PaytmInsights.jsx';
 
 function LoanCard({ data: d, onPlay }) {
   return (
@@ -38,12 +32,28 @@ function LoanCard({ data: d, onPlay }) {
         <Row label="Monthly EMI" value={inr(d.emi)} strong />
         <Row label="Total you repay" value={inr(d.totalRepay)} strong />
         <Row
-          label="EMI vs your income"
+          label={d.incomeFromPapers ? 'All your EMIs vs your income' : 'EMI vs your income'}
           value={d.fit ? `${d.sharePct}%` : 'Not checked'}
-          sub={d.fit ? `of ${inr(d.income)} a month` : 'Share your income to check this'}
+          sub={d.fit ? (d.incomeFromPapers ? `of ${inr(d.income)} counted from your papers, with ${inr(d.obligations)} you already pay` : `of ${inr(d.income)} a month`) : 'Share your income or your bank statements to check this'}
           strong={Boolean(d.fit)}
         />
       </section>
+      {d.charges?.length > 0 && (
+        <section className="j-tile j-rows">
+          <p className="j-eyebrow">Charges to watch before you sign</p>
+          {d.charges.map((charge) => <Row key={charge.label} label={charge.label} value={charge.value} sub={charge.note} strong={!charge.known} />)}
+        </section>
+      )}
+      {d.schedule?.length > 0 && (
+        <section className="j-tile">
+          <p className="j-eyebrow">Where your EMIs go, year by year</p>
+          <table className="j-doc-table">
+            <thead><tr><th>Year</th><th>Interest</th><th>Repays the loan</th><th>Still owed</th></tr></thead>
+            <tbody>{d.schedule.map((year) => <tr key={year.year}><td>{year.year}</td><td>{inr(year.interest)}</td><td><b>{inr(year.principal)}</b></td><td>{inr(year.balance)}</td></tr>)}</tbody>
+          </table>
+          <p className="j-muted j-small">Early EMIs are mostly interest. That is why closing early saves the most in the first year.</p>
+        </section>
+      )}
       {d.coolingOffDays != null && (
         <section className="j-callout is-amber">
           <b>Cooling-off period:</b> you have {d.coolingOffDays} days after signing to exit without penalty. MITRA reminds you before it ends.
@@ -309,7 +319,7 @@ function ConsentsCard({ data: d }) {
 }
 
 function AskCard({ data: d }) {
-  const purpose = { loan_eligibility: 'Loan eligibility', insurance_needs: 'Working out insurance needs', merchant_credit: 'Working capital eligibility' }[d.purpose] || d.purpose;
+  const purpose = { loan_eligibility: 'Loan eligibility', insurance_needs: 'Working out insurance needs', merchant_credit: 'Working capital eligibility', business_insights: 'Profiling your business', affordability: 'Checking what you can afford' }[d.purpose] || d.purpose;
   return (
     <section className="j-tile j-rows">
       <p className="j-eyebrow">{d.mode === 'consent' ? 'Already known, so MITRA asks permission only' : 'Asked once, reused by every agent'}</p>
@@ -381,6 +391,7 @@ const CARDS = {
   risk: { title: 'Offer X-Ray', Body: RiskCard },
   merchant: { title: 'Working capital, explained', Body: MerchantCard },
   lenderBrief: { title: 'Ready for the lender', Body: LenderBriefCard },
+  insights: { title: 'Your business, profiled', Body: InsightsCard },
   application: { title: 'Your application, pre-filled', Body: ApplicationCard },
   handoff: { title: 'Passed to a person', Body: ({ data }) => <HandoffBrief brief={data} /> },
   consents: { title: 'Your consents', Body: ConsentsCard },
@@ -392,6 +403,9 @@ const CARDS = {
   arcade: { title: 'Learn by playing', Body: ArcadeCard },
   promises: { title: 'Promise Check: what the agent said', Body: PromisesCard },
   document: { title: 'What MITRA read from your document', Body: DocumentCard },
+  incomeRead: { title: 'What MITRA read from your income papers', Body: IncomeReadCard },
+  affordability: { title: 'What you can safely afford', Body: AffordabilityCard },
+  simulator: { title: 'Other terms, tried out', Body: SimulatorCard },
 };
 
 function DocumentCard({ data: d, onDocument }) {
@@ -463,14 +477,14 @@ function ArcadeCard({ data: d, onPlay }) {
   );
 }
 
-export function ResultCard({ card, onAsk, onPlay, onDocument }) {
+export function ResultCard({ card, onAsk, onPlay, onDocument, onIncome }) {
   const spec = CARDS[card?.type];
   if (!spec) return null;
   const { Body, title } = spec;
   return (
     <div className="j-result" key={card.key}>
       <h2>{title}</h2>
-      <Body data={card.data} onAsk={onAsk} onPlay={onPlay} onDocument={onDocument} />
+      <Body data={card.data} onAsk={onAsk} onPlay={onPlay} onDocument={onDocument} onIncome={onIncome} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { SAMPLE_MESSAGES } from '../sampleData.js';
 import { ResultCard } from './cards.jsx';
 import TrustPanel from './TrustPanel.jsx';
 import { postRomanise, useJourney } from './useJourney.js';
+import { sampleFiles } from './auth.js';
 import { setAiStatus } from '../../engine/aiTransport.js';
 import { loadAiStatus } from '../../engine/api.js';
 import './journeys.css';
@@ -25,15 +26,18 @@ const STATUS_LINE = {
 const SCENES = {
   ramesh: [
     { label: 'Loan', prompts: ['இந்த லோனுக்கு உண்மையான செலவு எவ்வளவு?', 'What does this loan really cost?', 'என் மாத வருமானம் 45,000 ரூபாய்', 'முன்கூட்டியே கடனை அடைத்தால் அபராதம் உண்டா?'] },
+    { label: 'Loan Clarity', prompts: ['I deliver food and have no salary slip. How much can I borrow?', 'मेरी कमाई हर महीने बदलती है, क्या मैं यह लोन ले सकता हूँ?', 'Can I afford this loan?', 'What if I take it for 36 months?', 'என் EMI-ஐ குறைக்க முடியுமா?', 'What if I borrow 1.5 lakh for 24 months?'] },
     { label: 'Insurance', prompts: ['मुझे कितना बीमा चाहिए?', 'How much insurance do I need?', 'My wife and two kids', '₹10 lakh', '₹3 lakh from my employer', 'Explain the plans in simple words'] },
     { label: 'Claim', prompts: ['My claim was cut, why?', 'Draft the grievance', 'How do I file a claim?'] },
     { label: 'Scam', prompts: [SAMPLE_MESSAGES.loanScam, SAMPLE_MESSAGES.collect, 'Someone is on the phone telling me to share the OTP right now, I am scared'] },
   ],
   lakshmi: [
     { label: 'Working capital', prompts: ['என் கடைக்கு சரக்கு வாங்க பணம் வேண்டும்', 'I need money for stock for my shop', 'Yes, go ahead', 'Yes, send it to the lender'] },
+    { label: 'Loan Clarity', prompts: ['How much can I safely borrow?', 'What if I take it for 36 months?', 'What does this loan really cost?'] },
     { label: 'Scam', prompts: [SAMPLE_MESSAGES.collect] },
   ],
 };
+
 
 // The browser's own QR reader. Nothing leaves the device until the link is read.
 async function readQr(file) {
@@ -94,23 +98,185 @@ function CallBack({ onRing }) {
   );
 }
 
-function Phone({ journey, customerId, onStart, avatar, onAvatar, faces, phoneReady }) {
+
+const Icon = {
+  phone: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z" /></svg>,
+  play: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" aria-hidden="true"><path d="M7 5l12 7-12 7z" /></svg>,
+  sliders: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></svg>,
+  plus: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>,
+  close: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>,
+  mic: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>,
+  send: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>,
+  income: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M8 13h8M8 17h5" /></svg>,
+  kfs: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM9 12h6M9 16h6M9 8h3" /></svg>,
+  qr: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2" /></svg>,
+  call: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 12h2l2-6 3 12 3-9 2 5 2-2h4" /></svg>,
+  loan: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 7h18v10H3zM12 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z" /></svg>,
+  shield: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4" /></svg>,
+  cover: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s-7-4.5-7-11a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 6.5-7 11-7 11z" /></svg>,
+  claim: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 4h6M8 4H5v17h14V4h-3M8 11h8M8 15h5" /></svg>,
+  shop: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9v11h16V9M4 9h16M9 20v-6h6v6" /></svg>,
+};
+
+
+// Where to begin, before a word is said. Each starts the call with that question.
+const JOURNEYS = {
+  ramesh: [
+    { icon: Icon.loan, title: 'Loan Clarity', blurb: 'What you can safely borrow, from your own papers', prompt: 'Can I afford this loan?' },
+    { icon: Icon.kfs, title: 'The real cost of a loan', blurb: 'APR, fees and charges, before you sign', prompt: 'What does this loan really cost?' },
+    { icon: Icon.cover, title: 'Buy the right cover', blurb: 'How much insurance you need, in plain words', prompt: 'How much insurance do I need?' },
+    { icon: Icon.claim, title: 'A claim that was cut', blurb: 'Every deduction checked against the policy', prompt: 'My claim was cut, why?' },
+    { icon: Icon.shield, title: 'Catch a scam before the PIN', blurb: 'Offer X-Ray on any message or QR', prompt: SAMPLE_MESSAGES.loanScam },
+  ],
+  lakshmi: [
+    { icon: Icon.shop, title: 'Money for stock', blurb: 'Working capital from Soundbox sales, no form', prompt: 'I need money for stock for my shop' },
+    { icon: Icon.loan, title: 'Loan Clarity', blurb: 'What the shop can safely borrow', prompt: 'How much can I safely borrow?' },
+    { icon: Icon.shield, title: 'Catch a scam before the PIN', blurb: 'Offer X-Ray on a collect request', prompt: SAMPLE_MESSAGES.collect },
+  ],
+};
+
+// Closes on a click outside or Escape, so a menu never traps the presenter.
+function useDismiss(open, close) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const outside = (event) => { if (ref.current && !ref.current.contains(event.target)) close(); };
+    const escape = (event) => { if (event.key === 'Escape') close(); };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, [open, close]);
+  return ref;
+}
+
+// The presenter's switches, out of the caller's way.
+function DemoControls({ handsFree, setHandsFree, modelOff, setModelOff, chaos, setChaos }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
+  const items = [
+    ['Hands-free', 'Listen again after each answer', handsFree, setHandsFree, false],
+    ['Model outage', 'Engines and receipts keep working', modelOff, setModelOff, true],
+    ['Corrupt next translation', 'Watch the figures fence catch it', chaos, setChaos, true],
+  ];
+  return (
+    <div className="j-pop" ref={ref}>
+      <button type="button" className="j-btn-ghost" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        {Icon.sliders}Demo controls{(modelOff || chaos) && <i className="j-alert-dot" aria-label="A fault is on" />}
+      </button>
+      {open && (
+        <div className="j-pop-menu" role="group" aria-label="Demo controls">
+          <p>For the presenter. Callers never see these.</p>
+          {items.map(([label, hint, on, set, warn]) => (
+            <button key={label} type="button" role="switch" aria-checked={on} className={`j-switch-row ${warn ? 'is-warn' : ''}`} onClick={() => set(!on)}>
+              <span><b>{label}</b><small>{hint}</small></span>
+              <i className="j-switch" aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Who is signed in, and the way out.
+function AccountMenu({ user, onSignOut }) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
+  const initials = user.name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  const line = user.demo ? 'Demo account' : [user.workLabel?.split(':')[0], user.city].filter(Boolean).join(', ') || 'Signed in';
+  return (
+    <div className="j-pop" ref={ref}>
+      <button type="button" className="j-account" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <i className={`is-${user.customerId === 'lakshmi' ? 'lakshmi' : 'ramesh'}`} aria-hidden="true">{initials}</i>
+        <span><b>{user.name}</b><small>{line}</small></span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+      {open && (
+        <div className="j-pop-menu" role="group" aria-label="Your account">
+          <div className="j-account-card">
+            <b>{user.name}</b>
+            {user.phone && <span>{user.phone}</span>}
+            {user.workLabel && <span>{user.workLabel}{user.city ? `, ${user.city}` : ''}</span>}
+            {user.income
+              ? <p className="j-account-income">Income papers on file: <b>₹{user.income.counted.toLocaleString('en-IN')}</b> a month counted, under consent until {user.consent?.expiresOn}.</p>
+              : !user.demo && <p className="j-account-income">No income papers yet. Share them on a call with the + button.</p>}
+          </div>
+          <button type="button" className="j-switch-row" onClick={onSignOut}><span><b>Sign out</b><small>{user.demo ? 'Back to the sign-in screen' : 'Your account and papers stay saved'}</small></span></button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Everything the caller can hand to MITRA, in one sheet instead of a row of buttons.
+function ShareSheet({ journey, customerId, sampleSet, onClose, onNote }) {
+  const { status, send } = journey;
+  const busy = status === 'thinking';
+  const done = (action) => async (...args) => { onClose(); await action(...args); };
+  const pick = (handler, multiple = false) => (event) => {
+    const files = [...(event.target.files || [])];
+    event.target.value = '';
+    if (files.length) done(handler)(multiple ? files : files[0]);
+  };
+  const sample = (path, type) => async () => new File([await (await fetch(`/samples/${path}`)).blob()], path, { type });
+  const tiles = [
+    { icon: Icon.income, title: 'Income papers', what: 'Bank statements, UPI receipts, ITR or GST', accept: 'application/pdf,image/jpeg,image/png', multiple: true, onFiles: journey.readIncome, onSample: async () => journey.readIncome(await sampleFiles(sampleSet)) },
+    ...(customerId === 'ramesh' ? [
+      { icon: Icon.kfs, title: 'Loan papers', what: 'A Key Fact Statement, read back to you', accept: 'application/pdf,image/jpeg,image/png', onFiles: journey.readDocument, onSample: async () => journey.readDocument(await sample('sample-kfs.pdf', 'application/pdf')()) },
+      {
+        icon: Icon.qr, title: 'Payment QR', what: 'Who really gets the money', accept: 'image/*',
+        onFiles: async (file) => { const link = await readQr(file); if (link) send(link); else onNote('I could not read a QR code in that picture. You can paste the UPI link in the box instead.'); },
+      },
+      { icon: Icon.call, title: 'A sales call', what: 'What the agent promised, against the papers', accept: 'audio/*', onFiles: journey.checkCall, onSample: async () => journey.checkCall(await sample('sample-agent-call.mp3', 'audio/mpeg')()) },
+    ] : []),
+  ];
+  return (
+    <div className="j-sheet-scrim" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="j-sheet" role="dialog" aria-label="Share with MITRA">
+        <header>
+          <h3>Share with MITRA</h3>
+          <button type="button" className="j-icon-btn" aria-label="Close" onClick={onClose}>{Icon.close}</button>
+        </header>
+        <div className="j-sheet-grid">
+          {tiles.map((tile, index) => (
+            <div key={tile.title} className="j-share-tile" style={{ animationDelay: `${60 + index * 50}ms` }}>
+              <label className="j-share-main">
+                <i>{tile.icon}</i>
+                <b>{tile.title}</b>
+                <span>{tile.what}</span>
+                <input type="file" accept={tile.accept} multiple={tile.multiple} disabled={busy} onChange={pick(tile.onFiles, tile.multiple)} />
+              </label>
+              {tile.onSample && <button type="button" className="j-link-btn" disabled={busy} onClick={done(tile.onSample)}>Use a sample</button>}
+            </div>
+          ))}
+        </div>
+        <p className="j-sheet-note">Files are read, then dropped. Only fingerprints and the figures you confirm go on your receipt.</p>
+      </div>
+    </div>
+  );
+}
+
+function Phone({ journey, customerId, sampleSet, onStart, avatar, onAvatar, faces, phoneReady, onNote }) {
   const { status, state, messages, secs, level, voiceOn, chips, send, micPress, toggleVoice, end } = journey;
   const [typed, setTyped] = useState('');
   const [captions, setCaptions] = useState(true);
   const [roman, setRoman] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const scroller = useRef(null);
   const merchant = customerId === 'lakshmi';
   const inCall = !['idle', 'ended'].includes(status);
   const speaking = status === 'speaking', listening = status === 'listening';
 
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }); }, [messages.length, status]);
+  useEffect(() => { if (!inCall) setSharing(false); }, [inCall]);
 
   const langLine = useMemo(() => {
     const spoken = [...messages].reverse().find((item) => item.from === 'customer' && item.lang);
-    if (!spoken) return 'Language: just talk, there is no menu';
+    if (!spoken) return 'Just talk, there is no language menu';
     const label = LANGUAGE_LABELS[spoken.lang] || spoken.lang;
-    return spoken.confidence != null ? `${label}, detected automatically (${Number(spoken.confidence).toFixed(2)})` : `${label}, detected automatically`;
+    return spoken.confidence != null ? `${label}, detected (${Number(spoken.confidence).toFixed(2)})` : `${label}, detected automatically`;
   }, [messages]);
 
   const submit = (event) => {
@@ -124,16 +290,15 @@ function Phone({ journey, customerId, onStart, avatar, onAvatar, faces, phoneRea
     return (
       <section className={`j-phone ${merchant ? 'is-soundbox' : ''}`} aria-label="Customer's phone">
         <div className="j-phone-start">
-          <Logo />
+          <div className="j-orb-big" aria-hidden="true"><span /><span /><i /></div>
           {status === 'ended'
-            ? <><p className="j-phone-big">Call ended</p><p>The record of this call is sealed.</p></>
-            : <><p className="j-phone-big">{merchant ? 'On your Soundbox' : 'Speak. Understand. Trust.'}</p><p>{merchant ? `${state?.customer?.name || 'Lakshmi Stores'}: ask out loud, while you serve customers.` : 'Insurance, loans and payments, explained on a call in your own language.'}</p></>}
-          {phoneReady && !merchant && <CallBack onRing={journey.watchPhone} />}
+            ? <><p className="j-phone-big">Call ended</p><p>The record of this call is sealed and yours to keep.</p></>
+            : <><p className="j-phone-big">{merchant ? 'Ask out loud, while you serve.' : 'Talk in your own language.'}</p><p>{merchant ? `${state?.customer?.name || 'Lakshmi Stores'}: MITRA lives on your Soundbox.` : 'MITRA is an AI assistant, not a person. It explains every rupee and never signs or pays for you.'}</p></>}
           <button type="button" className="j-call-btn" onClick={onStart} autoFocus>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z" /></svg>
-            {status === 'ended' ? 'Call again' : merchant ? 'Talk to MITRA' : 'Call MITRA'}
+            {Icon.phone}{status === 'ended' ? 'Call again' : merchant ? 'Talk to MITRA' : 'Start the call'}
           </button>
-          <p className="j-phone-note">Synthetic customer and offers. MITRA explains, it never signs or pays.</p>
+          {phoneReady && !merchant && <CallBack onRing={journey.watchPhone} />}
+          <p className="j-phone-note">Or pick where to begin, on the right.</p>
         </div>
       </section>
     );
@@ -142,15 +307,27 @@ function Phone({ journey, customerId, onStart, avatar, onAvatar, faces, phoneRea
   return (
     <section className={`j-phone ${merchant ? 'is-soundbox' : ''}`} aria-label="Live call with MITRA">
       <header className="j-phone-head">
-        <h2>MITRA</h2>
-        <p>{merchant ? 'AI Soundbox' : status === 'watching' ? 'Phone line' : 'Live call'} {clock(secs)}</p>
-        <span className="j-pill">You’re talking to an AI assistant</span>
+        <div className={`j-orb-mini ${speaking || listening ? 'is-live' : ''}`} aria-hidden="true"><span /><span /><i /></div>
+        <div className="j-phone-who">
+          <h2>{state?.customer?.name || (merchant ? 'Lakshmi Stores' : 'Ramesh K.')}</h2>
+          <p>{merchant ? 'AI Soundbox' : status === 'watching' ? 'Phone line' : 'Live call'} · <span className="j-tabular">{clock(secs)}</span> · AI assistant</p>
+        </div>
+        <div className="j-phone-tools">
+          <button type="button" className={captions ? 'is-on' : ''} aria-label={captions ? 'Hide English captions' : 'Show English captions'} aria-pressed={captions} onClick={() => setCaptions((value) => !value)}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 12h4M13 12h4M7 16h8" /></svg>
+          </button>
+          <button type="button" className={roman ? 'is-on' : ''} aria-label={roman ? 'Hide Roman letters' : 'Show in Roman letters'} aria-pressed={roman} onClick={() => setRoman((value) => !value)}>Aa</button>
+          <button type="button" className={voiceOn ? 'is-on' : ''} aria-label={voiceOn ? 'Mute MITRA' : 'Unmute MITRA'} aria-pressed={voiceOn} onClick={toggleVoice}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" />{voiceOn ? <path d="M17 9a4 4 0 0 1 0 6" /> : <path d="M17 9l4 6M21 9l-4 6" />}</svg>
+          </button>
+          <button type="button" className="j-hangup" aria-label="End call" onClick={end}>{Icon.phone}</button>
+        </div>
       </header>
 
       <div className="j-stage">
         {merchant ? <Suspense fallback={null}><SoundboxSim journey={journey} /></Suspense> : avatar === 'orb' ? <Wave active={speaking || listening} level={level} /> : (
           <Suspense fallback={<Wave active={speaking || listening} level={level} />}>
-            <TalkingHeadAvatar size={168} speaking={speaking} mood={status === 'thinking' ? 'thinking' : 'happy'} gesture={listening ? 'listen' : speaking ? 'explain' : 'idle'} />
+            <TalkingHeadAvatar size={150} speaking={speaking} mood={status === 'thinking' ? 'thinking' : 'happy'} gesture={listening ? 'listen' : speaking ? 'explain' : 'idle'} />
           </Suspense>
         )}
         {faces && !merchant && (
@@ -158,9 +335,8 @@ function Phone({ journey, customerId, onStart, avatar, onAvatar, faces, phoneRea
             {[['orb', 'Voice'], ['2d', '2D'], ['3d', '3D']].map(([id, label]) => <button key={id} type="button" role="radio" aria-checked={avatar === id} className={avatar === id ? 'is-active' : ''} onClick={() => onAvatar(id)}>{label}</button>)}
           </div>
         )}
+        <p className="j-lang"><i aria-hidden="true" />{langLine}</p>
       </div>
-
-      <p className="j-lang"><i aria-hidden="true" />{langLine}</p>
 
       <div className="j-transcript" ref={scroller} aria-live="polite">
         {messages.map((message) => (
@@ -171,36 +347,26 @@ function Phone({ journey, customerId, onStart, avatar, onAvatar, faces, phoneRea
             {message.rejected > 0 && <p className="j-rejected">{message.rejected} {message.rejected === 1 ? 'sentence' : 'sentences'} kept in English: a figure changed in translation.</p>}
           </article>
         ))}
-        {status === 'thinking' && <p className="j-working" role="status">{STATUS_LINE.thinking}</p>}
+        {status === 'thinking' && <p className="j-working" role="status"><i /><i /><i />{STATUS_LINE.thinking}</p>}
       </div>
 
-      <p className="j-status" role="status">{STATUS_LINE[status]}</p>
+      <p className={`j-status is-${status}`} role="status">{STATUS_LINE[status]}</p>
 
       {chips.length > 0 && (
-        <div className="j-chips">
-          {chips.map((chip) => <button type="button" key={chip} disabled={status === 'thinking'} onClick={() => send(chip, { tapped: true })}>{chip}</button>)}
+        <div className="j-chips" aria-label="Quick replies">
+          {chips.map((chip, index) => <button type="button" key={chip} style={{ animationDelay: `${index * 45}ms` }} disabled={status === 'thinking'} onClick={() => send(chip, { tapped: true })}>{chip}</button>)}
         </div>
       )}
 
-      <form className="j-type" onSubmit={submit}>
-        <input aria-label="Type in any language" placeholder="Or type in any language" value={typed} onChange={(event) => setTyped(event.target.value)} />
+      <form className="j-composer" onSubmit={submit}>
+        <button type="button" className="j-composer-add" aria-label="Share papers, a QR or a call" aria-expanded={sharing} onClick={() => setSharing((value) => !value)}>{Icon.plus}</button>
+        <input aria-label="Type in any language" placeholder="Type in any language" value={typed} onChange={(event) => setTyped(event.target.value)} />
+        {typed.trim()
+          ? <button type="submit" className="j-composer-mic" aria-label="Send">{Icon.send}</button>
+          : <button type="button" className={`j-composer-mic ${listening ? 'is-on' : ''}`} aria-label={listening ? 'Finish speaking' : 'Speak'} disabled={status === 'thinking' || status === 'transcribing'} onClick={micPress}>{Icon.mic}</button>}
       </form>
 
-      <footer className="j-controls">
-        <button type="button" className={listening ? 'is-on' : ''} aria-label={listening ? 'Finish speaking' : 'Speak'} disabled={status === 'thinking' || status === 'transcribing'} onClick={micPress}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></svg>
-        </button>
-        <button type="button" className={captions ? 'is-on' : ''} aria-label={captions ? 'Hide English captions' : 'Show English captions'} aria-pressed={captions} onClick={() => setCaptions((value) => !value)}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 12h4M13 12h4M7 16h8" /></svg>
-        </button>
-        <button type="button" className={roman ? 'is-on' : ''} aria-label={roman ? 'Hide Roman letters' : 'Show in Roman letters'} aria-pressed={roman} onClick={() => setRoman((value) => !value)}>Aa</button>
-        <button type="button" className={voiceOn ? 'is-on' : ''} aria-label={voiceOn ? 'Mute MITRA' : 'Unmute MITRA'} aria-pressed={voiceOn} onClick={toggleVoice}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" />{voiceOn ? <path d="M17 9a4 4 0 0 1 0 6" /> : <path d="M17 9l4 6M21 9l-4 6" />}</svg>
-        </button>
-        <button type="button" className="j-hangup" aria-label="End call" onClick={end}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 9c-1.6 0-3.1.3-4.5.7v3c0 .4-.2.7-.6.9-1 .5-1.8 1.1-2.6 1.8-.2.2-.4.3-.7.3s-.5-.1-.7-.3L.3 13.3a1 1 0 0 1 0-1.4C3.3 9.100 7.400 7.500 12 7.500s8.700 1.600 11.700 4.400a1 1 0 0 1 0 1.400l-2.500 2.500c-.2.2-.4.3-.7.3s-.5-.1-.7-.3c-.8-.7-1.600-1.300-2.600-1.800a1 1 0 0 1-.6-.9v-3C15.100 9.300 13.600 9 12 9z" /></svg>
-        </button>
-      </footer>
+      {sharing && <ShareSheet journey={journey} customerId={customerId} sampleSet={sampleSet} onClose={() => setSharing(false)} onNote={onNote} />}
     </section>
   );
 }
@@ -208,25 +374,45 @@ function Phone({ journey, customerId, onStart, avatar, onAvatar, faces, phoneRea
 function JourneyMap({ state, reminders }) {
   const reached = state?.stagesReached || [];
   const current = state?.stage;
+  const at = Math.max(STAGES.indexOf(current), 0);
   return (
     <nav className="j-map" aria-label="Journey stages">
-      {STAGES.map((stage, index) => (
-        <div key={stage} className={`j-map-step ${reached.includes(stage) ? 'is-reached' : ''} ${current === stage ? 'is-current' : ''}`} aria-current={current === stage ? 'step' : undefined}>
-          <span>{index + 1}</span>{STAGE_LABELS[stage]}
-        </div>
-      ))}
-      {state?.metrics?.turns > 0 && (
-        <div className="j-map-metrics" aria-label="This call so far">
-          {state.metrics.questionsAsked} {state.metrics.questionsAsked === 1 ? 'question' : 'questions'} asked · {state.metrics.reused} reused · 0 forms
+      <ol className="j-rail" style={{ '--fill': at / (STAGES.length - 1) }}>
+        {STAGES.map((stage, index) => {
+          const done = reached.includes(stage) && stage !== current;
+          return (
+            <li key={stage} className={`${done ? 'is-reached' : ''} ${current === stage ? 'is-current' : ''}`} aria-current={current === stage ? 'step' : undefined}>
+              <span className="j-rail-dot">{done ? '✓' : index + 1}</span>
+              <span className="j-rail-label">{STAGE_LABELS[stage]}</span>
+            </li>
+          );
+        })}
+      </ol>
+      {(state?.metrics?.turns > 0 || reminders > 0) && (
+        <div className="j-map-side">
+          {state?.metrics?.turns > 0 && (
+            <span className="j-map-metrics" aria-label="This call so far">
+              {state.metrics.questionsAsked} {state.metrics.questionsAsked === 1 ? 'question' : 'questions'} asked · {state.metrics.reused} reused · 0 forms
+            </span>
+          )}
+          {reminders > 0 && <span className="j-map-reminder">{reminders} {reminders === 1 ? 'reminder' : 'reminders'} tracked</span>}
         </div>
       )}
-      {reminders > 0 && <div className="j-map-reminder">{reminders} {reminders === 1 ? 'reminder' : 'reminders'} tracked</div>}
     </nav>
   );
 }
 
-export default function JourneyApp() {
-  const [customerId, setCustomerId] = useState(params.get('customer') === 'lakshmi' ? 'lakshmi' : 'ramesh');
+const CARD_TITLES = {
+  loan: 'Loan cost', gap: 'Cover gap', plans: 'Plans', window: 'Free-look', cooling: 'Cooling-off', checklist: 'Checklist', claim: 'Claim', grievance: 'Grievance',
+  risk: 'Offer X-Ray', merchant: 'Working capital', lenderBrief: 'Lender brief', application: 'Application', handoff: 'Handoff', consents: 'Consents', ask: 'Question',
+  note: 'Answer', prepay: 'Prepay', closed: 'Closed', menu: 'Menu', arcade: 'Game', promises: 'Promise Check', document: 'Loan papers',
+  incomeRead: 'Income papers', affordability: 'Afford', simulator: 'Try terms',
+};
+
+export default function JourneyApp({ user, onSignOut }) {
+  const customerId = user.customerId;
+  // The demo's sample lines and journeys come in two flavours: a person, or a Soundbox shop.
+  const persona = user.kind === 'merchant' ? 'lakshmi' : 'ramesh';
   const [modelOff, setModelOff] = useState(false);
   const [chaos, setChaos] = useState(false);
   const [handsFree, setHandsFree] = useState(params.get('handsfree') !== '0');
@@ -235,6 +421,7 @@ export default function JourneyApp() {
   const [cardIndex, setCardIndex] = useState(null);
   const [avatar, setAvatar] = useState(() => params.get('avatar') || 'orb');
   const [scene, setScene] = useState(0);
+  const [tryOpen, setTryOpen] = useState(false);
   const faces = params.get('faces') !== '0';
   const [phoneReady, setPhoneReady] = useState(false);
   const [arcade, setArcade] = useState(() => params.get('play') || null);
@@ -248,6 +435,7 @@ export default function JourneyApp() {
   const { status, state, cards, trace, error, send, start, setState } = journey;
 
   const shown = cardIndex != null && cardIndex < cards.length ? cards[cardIndex] : cards.at(-1);
+  const shownIndex = cardIndex ?? cards.length - 1;
   useEffect(() => { setCardIndex(null); }, [cards.length]);
 
   useEffect(() => {
@@ -284,30 +472,28 @@ export default function JourneyApp() {
   const openGame = useCallback((game, data = null) => { setArcadeCard(data); setArcade(game); }, []);
 
   const inCall = !['idle', 'ended'].includes(status);
-  const begin = () => { setVoiceNote(''); setTab('trace'); setScene(0); start({ customerId, channel: customerId === 'lakshmi' ? 'soundbox' : 'call' }); };
-  const switchCustomer = (id) => { if (id !== customerId) { journey.end(); setCustomerId(id); setScene(0); } };
+  const begin = () => { setVoiceNote(''); setTab('trace'); setScene(0); return start({ customerId, channel: persona === 'lakshmi' ? 'soundbox' : 'call' }); };
+  const beginWith = async (prompt) => { if (!inCall) await begin(); send(prompt); };
+  const signOut = () => { journey.end(); onSignOut(); };
 
-  const sceneList = SCENES[customerId];
+  const sceneList = SCENES[persona];
   const agentLabel = shown?.agent ? AGENTS[shown.agent]?.label : null;
+  const recent = cards.map((card, index) => ({ card, index })).slice(-5);
 
   return (
     <div className="j-app">
       <header className="j-top">
         <div className="j-top-left">
           <Logo />
-          <span className="j-divider" aria-hidden="true" />
-          <span className="j-track">AI-Powered Financial Journeys</span>
-          <span className="j-proto">Hackathon prototype, synthetic data</span>
+          <span className="j-proto">Prototype, synthetic data</span>
         </div>
         <div className="j-top-right">
-          <button type="button" className="j-top-play" onClick={() => openGame(true)}>🛺 Learn by playing</button>
-          <div className="j-segment" role="radiogroup" aria-label="Who is calling">
-            <button type="button" role="radio" aria-checked={customerId === 'ramesh'} className={customerId === 'ramesh' ? 'is-active' : ''} onClick={() => switchCustomer('ramesh')}>Ramesh K.</button>
-            <button type="button" role="radio" aria-checked={customerId === 'lakshmi'} className={customerId === 'lakshmi' ? 'is-active' : ''} onClick={() => switchCustomer('lakshmi')}>Lakshmi Stores</button>
-          </div>
-          <label className="j-toggle"><input type="checkbox" checked={handsFree} onChange={(event) => setHandsFree(event.target.checked)} /><span>Hands-free</span></label>
-          <label className={`j-toggle ${modelOff ? 'is-warn' : ''}`}><input type="checkbox" checked={modelOff} onChange={(event) => setModelOff(event.target.checked)} /><span>Model outage</span></label>
-          <label className={`j-toggle ${chaos ? 'is-warn' : ''}`}><input type="checkbox" checked={chaos} onChange={(event) => setChaos(event.target.checked)} /><span>Corrupt next translation</span></label>
+          <DemoControls handsFree={handsFree} setHandsFree={setHandsFree} modelOff={modelOff} setModelOff={setModelOff} chaos={chaos} setChaos={setChaos} />
+          <button type="button" className="j-btn-soft" onClick={() => openGame(true)}>{Icon.play}Learn by playing</button>
+          {inCall
+            ? <button type="button" className="j-btn-danger" onClick={journey.end}>{Icon.phone}End call</button>
+            : <button type="button" className="j-btn-primary" onClick={begin}>{Icon.phone}{status === 'ended' ? 'Call again' : 'Start the call'}</button>}
+          <AccountMenu user={user} onSignOut={signOut} />
         </div>
       </header>
 
@@ -321,54 +507,68 @@ export default function JourneyApp() {
 
       <main className="j-main">
         <div className="j-col-phone">
-          <Phone journey={journey} customerId={customerId} onStart={begin} avatar={avatar} onAvatar={setAvatar} faces={faces} phoneReady={phoneReady} />
+          <Phone journey={journey} customerId={persona} sampleSet={user.sample} onStart={begin} avatar={avatar} onAvatar={setAvatar} faces={faces} phoneReady={phoneReady} onNote={setVoiceNote} />
         </div>
 
         <section className="j-col-card" aria-label="What MITRA is showing">
           {shown ? (
             <>
               <div className="j-card-head">
-                {agentLabel && <span className="j-agent-tag">{agentLabel}</span>}
+                {agentLabel && <span className="j-agent-tag"><i aria-hidden="true" />{agentLabel}</span>}
                 {cards.length > 1 && (
-                  <div className="j-card-nav" aria-label="Earlier answers">
-                    <button type="button" aria-label="Previous answer" disabled={(cardIndex ?? cards.length - 1) === 0} onClick={() => setCardIndex((value) => (value ?? cards.length - 1) - 1)}>‹</button>
-                    <span>{(cardIndex ?? cards.length - 1) + 1} of {cards.length}</span>
-                    <button type="button" aria-label="Next answer" disabled={(cardIndex ?? cards.length - 1) >= cards.length - 1} onClick={() => setCardIndex((value) => (value ?? cards.length - 1) + 1)}>›</button>
+                  <div className="j-card-tabs" role="tablist" aria-label="Answers on this call">
+                    {cards.length > recent.length && <span className="j-card-more">+{cards.length - recent.length}</span>}
+                    {recent.map(({ card, index }) => (
+                      <button key={card.key} type="button" role="tab" aria-selected={index === shownIndex} className={index === shownIndex ? 'is-active' : ''} onClick={() => setCardIndex(index === cards.length - 1 ? null : index)}>
+                        {CARD_TITLES[card.type] || 'Answer'}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-              <ResultCard card={shown} onAsk={(prompt) => send(prompt)} onPlay={openGame} onDocument={journey.confirmDocument} />
+              <ResultCard card={shown} onAsk={(prompt, options) => send(prompt, options)} onPlay={openGame} onDocument={journey.confirmDocument} onIncome={journey.confirmIncome} />
             </>
           ) : (
             <div className="j-welcome">
+              <p className="j-welcome-kicker">Namaste, {user.name.split(' ')[0]}</p>
               <h1>One AI agent for every financial journey.</h1>
-              <p>Start the call and ask in your own language. MITRA answers aloud in eleven Indian languages, and on screen in more. The model listens, translates and picks a tool. It never produces a figure.</p>
-              <ul>
-                <li><b>Real numbers</b>, computed by deterministic engines</li>
-                <li><b>Asked once</b>, reused across agents under consent</li>
-                <li><b>A signed receipt</b> for every explanation</li>
-                <li><b>A person</b> whenever it matters, with the whole story</li>
+              <p>Ask in your own language. MITRA answers aloud in eleven Indian languages. The model listens, translates and picks a tool. It never produces a figure.</p>
+              {user.income && (
+                <p className="j-welcome-papers"><b>Your papers are on file.</b> MITRA counts ₹{user.income.counted.toLocaleString('en-IN')} a month and a comfortable EMI of ₹{user.income.comfortableEmi.toLocaleString('en-IN')}. It will not ask again.</p>
+              )}
+              <div className="j-journeys">
+                {JOURNEYS[persona].map((item, index) => (
+                  <button key={item.title} type="button" style={{ animationDelay: `${80 + index * 60}ms` }} disabled={status === 'opening' || status === 'thinking'} onClick={() => beginWith(item.prompt)}>
+                    <i>{item.icon}</i>
+                    <span><b>{item.title}</b><small>{item.blurb}</small></span>
+                  </button>
+                ))}
+              </div>
+              <ul className="j-promises-row">
+                <li><b>Real numbers</b> from deterministic engines</li>
+                <li><b>Asked once</b>, reused under consent</li>
+                <li><b>A signed receipt</b> for every answer</li>
+                <li><b>A person</b> whenever it matters</li>
               </ul>
             </div>
           )}
-          {inCall && customerId === 'ramesh' && (
-            <div className="j-doc-bar">
-              <label className="j-doc-upload">📄 Read my loan papers<input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) journey.readDocument(file); }} /></label>
-              <button type="button" disabled={status === 'thinking'} onClick={async () => { const res = await fetch('/samples/sample-kfs.pdf'); const blob = await res.blob(); journey.readDocument(new File([blob], 'sample-kfs.pdf', { type: 'application/pdf' })); }}>Use a sample KFS</button>
-              <label className="j-doc-upload">📷 Check a payment QR<input type="file" accept="image/*" onChange={async (event) => { const file = event.target.files?.[0]; event.target.value = ''; if (!file) return; const link = await readQr(file); if (link) send(link); else setVoiceNote('I could not read a QR code in that picture. You can paste the UPI link in the box instead.'); }} /></label>
-              <label className="j-doc-upload">🎙 Check what the agent promised<input type="file" accept="audio/*" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) journey.checkCall(file); }} /></label>
-              <button type="button" disabled={status === 'thinking'} onClick={async () => { const res = await fetch('/samples/sample-agent-call.mp3'); const blob = await res.blob(); journey.checkCall(new File([blob], 'sample-agent-call.mp3', { type: 'audio/mpeg' })); }}>Use a sample sales call</button>
-            </div>
-          )}
           {inCall && (
-            <div className="j-scenes">
-              <div className="j-scene-tabs" role="tablist" aria-label="Sample lines the caller could say">
-                <span>The caller could say</span>
-                {sceneList.map((item, index) => <button key={item.label} type="button" role="tab" aria-selected={index === scene} className={index === scene ? 'is-active' : ''} onClick={() => setScene(index)}>{item.label}</button>)}
-              </div>
-              <div className="j-scene-lines">
-                {(sceneList[scene] || sceneList[0]).prompts.map((prompt) => <button type="button" key={prompt} disabled={status === 'thinking'} onClick={() => send(prompt)}>{prompt}</button>)}
-              </div>
+            <div className={`j-scenes ${tryOpen ? 'is-open' : ''}`}>
+              <button type="button" className="j-scenes-toggle" aria-expanded={tryOpen} onClick={() => setTryOpen((value) => !value)}>
+                <span>Try saying</span>
+                <small>Sample lines a caller could say, in several languages</small>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+              </button>
+              {tryOpen && (
+                <div className="j-scenes-body">
+                  <div className="j-scene-tabs" role="tablist" aria-label="Topics">
+                    {sceneList.map((item, index) => <button key={item.label} type="button" role="tab" aria-selected={index === scene} className={index === scene ? 'is-active' : ''} onClick={() => setScene(index)}>{item.label}</button>)}
+                  </div>
+                  <div className="j-scene-lines" key={scene}>
+                    {(sceneList[scene] || sceneList[0]).prompts.map((prompt, index) => <button type="button" key={prompt} style={{ animationDelay: `${index * 35}ms` }} disabled={status === 'thinking'} onClick={() => send(prompt)}>{prompt}</button>)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

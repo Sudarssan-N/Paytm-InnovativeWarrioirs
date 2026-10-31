@@ -149,7 +149,7 @@ function Passport({ chain }) {
   );
 }
 
-const WITHDRAW_TEXT = { loan_eligibility: 'Withdraw my income consent', insurance_needs: 'Withdraw my insurance consent', merchant_credit: 'Withdraw my sales consent', rm_handoff: 'Withdraw consent for the expert case' };
+const WITHDRAW_TEXT = { loan_eligibility: 'Withdraw my income consent', insurance_needs: 'Withdraw my insurance consent', merchant_credit: 'Withdraw my sales consent', business_insights: 'Withdraw my business insights consent', rm_handoff: 'Withdraw consent for the expert case' };
 
 function Consents({ state, onSend, onErased }) {
   const consents = state?.consents || [];

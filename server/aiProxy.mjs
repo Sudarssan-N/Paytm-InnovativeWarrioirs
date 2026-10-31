@@ -33,7 +33,7 @@ export const aiStatus = () => ({ llm: Boolean(deepseekKey()), sarvam: Boolean(sa
 const WINDOW_MS = 60_000;
 // A translated reply costs ~10 Sarvam calls (one per line, speech batches,
 // language ID), so its limit is set per conversation turn, not per request.
-const LIMITS = { sarvam: 300, journey: 240 };
+const LIMITS = { sarvam: 300, journey: 240, auth: 30 };
 const hits = new Map();
 export function rateLimited(client, bucket, now = Date.now()) {
   const key = `${bucket}:${client}`;

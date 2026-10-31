@@ -7,8 +7,10 @@ import { addDays, isoDate } from './money.js';
 export const PURPOSES = Object.freeze({
   loan_eligibility: Object.freeze({ id: 'loan_eligibility', label: 'Income summary, for loan eligibility only', fields: ['income'], agents: ['lending'] }),
   insurance_needs: Object.freeze({ id: 'insurance_needs', label: 'Income, family and cover, to work out insurance needs', fields: ['income', 'dependants', 'existingLife', 'existingHealth'], agents: ['insurance'] }),
+  affordability: Object.freeze({ id: 'affordability', label: 'Income from your own papers, to check what you can afford only', fields: ['incomeProfile'], agents: ['lending'] }),
   merchant_credit: Object.freeze({ id: 'merchant_credit', label: 'Soundbox sales summary, for working capital eligibility only', fields: ['salesSummary'], agents: ['merchant'] }),
-  rm_handoff: Object.freeze({ id: 'rm_handoff', label: 'Case details, shared with one expert for this case only', fields: ['income', 'dependants', 'existingLife', 'existingHealth', 'salesSummary'], agents: ['human'] }),
+  business_insights: Object.freeze({ id: 'business_insights', label: 'Paytm orders, refunds and settlements, to profile the business and suggest next steps only', fields: ['salesSummary'], agents: ['merchant'] }),
+  rm_handoff: Object.freeze({ id: 'rm_handoff', label: 'Case details, shared with one expert for this case only', fields: ['income', 'dependants', 'existingLife', 'existingHealth', 'salesSummary', 'incomeProfile'], agents: ['human'] }),
 });
 
 const DAYS = PACKS.privacy.assumptions.consentDays;

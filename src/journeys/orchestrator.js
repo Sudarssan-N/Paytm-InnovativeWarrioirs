@@ -31,8 +31,9 @@ const REASON_WHY = {
 
 let handoffSequence = 0;
 
-export function createSession({ id, customerId = 'ramesh', channel = 'call', now = Date.now() }) {
-  const customer = CUSTOMERS[customerId];
+// `customer` comes from a signed-in account; without one, a demo customer by id.
+export function createSession({ id, customerId = 'ramesh', customer: given = null, channel = 'call', now = Date.now() }) {
+  const customer = given || CUSTOMERS[customerId];
   if (!customer) throw new RangeError(`Unknown customer ${customerId}`);
   const session = {
     id, customerId, customer, channel, startedAt: new Date(now).toISOString(),
@@ -48,10 +49,12 @@ export function greeting(session) {
   const merchant = session.customer.kind === 'merchant';
   const reply = merchant
     ? `Vanakkam, ${session.customer.name}. This is MITRA, an AI assistant on your Soundbox, not a person. You can talk in your own language. Need money for stock? Just say so.`
-    : 'Namaste, vanakkam. This is MITRA, an AI assistant, not a person. You can talk in your own language. A loan, insurance, a claim, or a payment you are unsure about: how can I help?';
+    : `Namaste${session.customer.fromAccount ? `, ${session.customer.name.split(' ')[0]}` : ', vanakkam'}. This is MITRA, an AI assistant, not a person. You can talk in your own language. A loan, insurance, a claim, or a payment you are unsure about: how can I help?`;
   return {
     reply,
-    chips: merchant ? ['I need money for stock for my shop', 'Is this message a scam?'] : ['What does this loan really cost?', 'How much insurance do I need?', 'My claim was cut, why?', 'Is this message a scam?'],
+    chips: merchant ? ['How is my business doing?', 'I need money for stock for my shop', 'Is this message a scam?']
+      : session.facts.incomeProfile ? ['Can I afford this loan?', 'What does this loan really cost?', 'How much insurance do I need?', 'Is this message a scam?']
+        : ['What does this loan really cost?', 'How much insurance do I need?', 'My claim was cut, why?', 'Is this message a scam?'],
     card: { type: 'menu', data: { merchant } },
     passport: {
       title: 'Call opened: AI disclosed', evidence: [{ field: 'Disclosure', value: 'Said it is an AI at the start of the call', source: 'MITRA', asOf: isoDate(Date.now()) }],
@@ -72,6 +75,9 @@ const reachStage = (session, stage) => {
 function nextNeed(session, tool, now) {
   for (const need of tool.needs || []) {
     if (session.declined.includes(`${need.purpose}:${need.field}`)) continue;
+    // A silent need is read when it is there and never asked for: income papers are uploaded, not spoken.
+    if (need.silent) continue;
+    if (need.satisfiedBy && readFact(session, { agent: tool.agent, ...need.satisfiedBy, now }).status === 'ok') continue;
     const state = readFact(session, { agent: tool.agent, field: need.field, purpose: need.purpose, now });
     if (state.status === 'ok') continue;
     if (state.status === 'denied') throw new Error(`${tool.agent} may not read ${need.field}`);
@@ -84,7 +90,7 @@ function askFor({ session, need, state, now }) {
   if (state.status === 'no_consent') {
     const known = session.facts[need.field].value;
     const shown = typeof known === 'number' && need.field === 'income' ? ` You told me your income is ${inr(known)}, so I will not ask again.` : '';
-    const purposeLabel = { insurance_needs: 'work out your insurance needs', loan_eligibility: 'check loan eligibility', merchant_credit: 'check working capital eligibility' }[need.purpose];
+    const purposeLabel = { insurance_needs: 'work out your insurance needs', loan_eligibility: 'check loan eligibility', merchant_credit: 'check working capital eligibility', business_insights: 'look at how your business is doing', affordability: 'check what you can afford' }[need.purpose];
     return { text: `${shown} May I use your ${need.label} to ${purposeLabel}, only for that, for 30 days? You can withdraw it any time.`.trim(), mode: 'consent' };
   }
   const firstForPurpose = !activeConsent(session, need.purpose, now);
@@ -106,7 +112,7 @@ function buildHandoff(session, { reason, carry = {}, turn, now, linkedPassport }
     asked: { english: carry.askedText?.english || turn.textEn, original: carry.askedText?.original || turn.text },
     explained: [...session.explained],
     why: carry.why || REASON_WHY[reason] || REASON_WHY.asked,
-    consent: sharedFields.length ? `${sharedFields.map((field) => ({ income: 'Income', dependants: 'dependants', existingLife: 'life cover', existingHealth: 'health cover' }[field] || field)).join(', ')}: shared with you for this case only` : 'Nothing beyond this call',
+    consent: sharedFields.length ? `${sharedFields.map((field) => ({ income: 'Income', dependants: 'dependants', existingLife: 'life cover', existingHealth: 'health cover', incomeProfile: 'income from their own papers' }[field] || field)).join(', ')}: shared with you for this case only` : 'Nothing beyond this call',
     consentId: grant.id, next: carry.next || `Call back in ${lang} and resolve the question above`,
     linkedPassport, notes: null, outcome: null,
   };
@@ -176,8 +182,8 @@ function runTool({ session, name, args, turn, trace, now, modelOff }) {
   if (tool.merchantOnly && session.customer.kind !== 'merchant') {
     trace.push({ kind: 'engine', label: 'No Soundbox on this account', detail: 'Shop loans use the shop’s own sales, so this one stops here', ok: true });
     return {
-      reply: 'This one is for shops with a Paytm Soundbox, and there is none on this account. I can explain the personal loan offered to you, or bring in a person.',
-      card: null, chips: ['What does this loan really cost?', 'Talk to a person'], agent: tool.agent, tool: name, journey: tool.journey, stage: tool.stage, trace,
+      reply: 'This one is for shops with a Paytm Soundbox, and there is none on this account. I can explain the personal loan offered to you, check what you can afford from your bank statements, or bring in a person.',
+      card: null, chips: ['What does this loan really cost?', 'Can I afford this loan?', 'Talk to a person'], agent: tool.agent, tool: name, journey: tool.journey, stage: tool.stage, trace,
     };
   }
 
@@ -206,7 +212,7 @@ function runTool({ session, name, args, turn, trace, now, modelOff }) {
         session.metrics.reused = session.reusedPairs.length;
       }
       trace.push({ kind: 'consent', label: `${state.reused ? 'Reused' : 'Read'} ${need.label}`, detail: `${state.reused ? `Collected for another agent, so ${AGENTS[tool.agent].label} did not ask again. ` : ''}Under consent ${state.grant.id}, until ${state.grant.expiresOn}`, ok: true });
-    } else {
+    } else if (!(state.status === 'missing' && (need.silent || need.satisfiedBy))) {
       trace.push({ kind: 'consent', label: `Did not read ${need.label}`, detail: 'No consent for this purpose, so the agent cannot see it' });
     }
   }

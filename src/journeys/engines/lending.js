@@ -33,14 +33,41 @@ export function emiFit(emi, income, pack = PACKS.lending) {
   return { sharePct: Number(share.toFixed(1)), band, income };
 }
 
-export function explainLoanOffer(offer, { income = null } = {}) {
+// The loan an EMI can carry: the annuity formula run backwards.
+export function principalFor(emi, annualPct, months) {
+  const r = annualPct / 1200;
+  if (r === 0) return emi * months;
+  return (emi * (1 - (1 + r) ** -months)) / r;
+}
+
+// Where the EMIs go, a year at a time: how much is interest and how much repays the loan.
+export function amortisation(principal, annualPct, months) {
+  const emi = emiFor(principal, annualPct, months);
+  const r = annualPct / 1200;
+  const years = [];
+  let balance = principal;
+  for (let month = 1; month <= months; month++) {
+    const interest = balance * r;
+    const repaid = month === months ? balance : emi - interest;
+    balance -= repaid;
+    const year = Math.ceil(month / 12);
+    if (!years[year - 1]) years[year - 1] = { year, interest: 0, principal: 0, balance: 0 };
+    years[year - 1].interest += interest;
+    years[year - 1].principal += repaid;
+    years[year - 1].balance = Math.max(balance, 0);
+  }
+  return years.map((item) => ({ year: item.year, interest: Math.round(item.interest), principal: Math.round(item.principal), balance: Math.round(item.balance) }));
+}
+
+// `obligations` are EMIs the customer already pays: the fit is judged on all of them.
+export function explainLoanOffer(offer, { income = null, obligations = 0 } = {}) {
   const pack = PACKS.lending;
   const emi = emiFor(offer.principal, offer.ratePct, offer.months);
   const fees = offer.processingFee + offer.gstOnFee + offer.otherCharges;
   const net = offer.principal - fees;
   const apr = aprPct(net, emi, offer.months, 12);
   const totalRepay = emi * offer.months;
-  const fit = income ? emiFit(emi, income, pack) : null;
+  const fit = income ? { ...emiFit(emi + obligations, income, pack), obligations } : null;
   const aprRounded = Number(apr.toFixed(1));
   return {
     offerId: offer.id,

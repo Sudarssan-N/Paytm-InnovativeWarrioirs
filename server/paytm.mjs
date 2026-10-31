@@ -107,8 +107,10 @@ export async function finishLogin(params) {
   return tools;
 }
 
+// Signing out forgets the merchant's pulled records too, not only the token.
 export async function disconnect() {
   await rm(TOKEN_FILE, { force: true });
+  await rm(path.join(DATA_DIR, 'paytm-snapshot.json'), { force: true });
   tools = null;
   mcpSession = null;
 }
@@ -123,8 +125,25 @@ const parseReply = async (res) => {
   return text ? JSON.parse(text) : {};
 };
 
+// An access token lasts hours, a pull of six months takes many calls, so an expired
+// token is renewed once with the refresh token before the customer has to sign in again.
+async function refreshToken(token) {
+  if (!token?.refresh_token) return null;
+  const client = await readJson(CLIENT_FILE);
+  const { meta } = await discover();
+  const res = await fetch(meta.token_endpoint, {
+    method: 'POST', signal: AbortSignal.timeout(10000), headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: token.refresh_token, client_id: client?.client_id || '', resource: MCP_URL, ...(client?.client_secret ? { client_secret: client.client_secret } : {}) }),
+  });
+  const fresh = await res.json().catch(() => ({}));
+  if (!res.ok || !fresh.access_token) return null;
+  const saved = { ...token, ...fresh, savedAt: Date.now() };
+  await writeSecret(TOKEN_FILE, saved);
+  return saved;
+}
+
 let rpcId = 1;
-async function rpc(method, params = {}, { notify = false } = {}) {
+async function rpc(method, params = {}, { notify = false, retried = false } = {}) {
   const token = await readJson(TOKEN_FILE);
   if (!token?.access_token) throw Object.assign(new Error('Paytm is not connected'), { status: 409 });
   const started = Date.now();
@@ -134,6 +153,13 @@ async function rpc(method, params = {}, { notify = false } = {}) {
     body: JSON.stringify({ jsonrpc: '2.0', method, params, ...(notify ? {} : { id: rpcId++ }) }),
   });
   countCall('paytm/mcp', { ms: Date.now() - started, ok: res.ok, status: res.status });
+  // A 401 is an expired token; a 404 with a session is an expired MCP session. Each is retried once.
+  const expired = res.status === 401 ? await refreshToken(token) : res.status === 404 && mcpSession;
+  if (expired && !retried) {
+    mcpSession = null;
+    if (method !== 'initialize') await ensureSession();
+    return rpc(method, params, { notify, retried: true });
+  }
   mcpSession = res.headers.get('mcp-session-id') || mcpSession;
   if (notify) return null;
   if (!res.ok) throw Object.assign(new Error(`Paytm MCP returned ${res.status}`), { status: res.status === 401 ? 409 : 502 });
@@ -148,11 +174,20 @@ async function ensureSession() {
   await rpc('notifications/initialized', {}, { notify: true });
 }
 
+let toolsAt = 0;
 export async function listTools() {
   await ensureSession();
   tools = (await rpc('tools/list')).tools || [];
+  toolsAt = Date.now();
   return tools;
 }
+
+// The list barely changes, so a pull of many pages asks for it once.
+export async function knownTools(maxAgeMs = 300_000) {
+  return tools && Date.now() - toolsAt < maxAgeMs ? tools : listTools();
+}
+
+export const paytmConnected = async () => Boolean((await readJson(TOKEN_FILE))?.access_token);
 
 // Reading is free. Anything that changes something must be named here on purpose,
 // and only runs after the customer has said yes on this call.
@@ -160,8 +195,7 @@ const READ_ONLY = /^(get|fetch|list|search|check|view|read|track)/i;
 const ALLOWED_WRITES = /(create|generate).*(link)/i;
 
 export async function callTool(name, args, { confirmed = false } = {}) {
-  await listTools();
-  const tool = tools.find((item) => item.name === name);
+  const tool = (await knownTools()).find((item) => item.name === name);
   if (!tool) throw Object.assign(new Error('Paytm has no such tool'), { status: 404 });
   const read = READ_ONLY.test(name);
   if (!read && !(ALLOWED_WRITES.test(name) && confirmed)) throw Object.assign(new Error('This action needs the customer’s confirmation and is not on the allow-list'), { status: 403 });
@@ -192,6 +226,8 @@ export async function handlePaytm(req, res, url) {
       return res.end();
     }
     if (req.method === 'POST' && url.pathname === '/api/paytm/disconnect') { await disconnect(); return send(res, 200, { connected: false }); }
+    // The merchant's profile and suggestions, from what the read tools return.
+    if (url.pathname === '/api/paytm/profile' || url.pathname === '/api/paytm/sync') return (await import('./paytmProfile.mjs')).handleProfile(req, res, url);
     if (req.method === 'GET' && url.pathname === '/api/paytm/tools') return send(res, 200, { tools: (await listTools()).map(({ name, description, inputSchema }) => ({ name, description, inputSchema })) });
     if (req.method === 'POST' && url.pathname === '/api/paytm/tool') {
       const input = await readBody(req);

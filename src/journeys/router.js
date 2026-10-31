@@ -17,7 +17,7 @@ const OFFER_ID = Object.keys(LOAN_OFFERS)[0];
 const offer = { offer_id: OFFER_ID };
 
 const purposeIn = (text) => ({
-  purpose: /insurance|cover/i.test(text) ? 'insurance_needs' : /sales|soundbox/i.test(text) ? 'merchant_credit' : /expert|case/i.test(text) ? 'rm_handoff' : 'loan_eligibility',
+  purpose: /insurance|cover/i.test(text) ? 'insurance_needs' : /insight|profil|orders|refunds|settlements/i.test(text) ? 'business_insights' : /sales|soundbox/i.test(text) ? 'merchant_credit' : /expert|case/i.test(text) ? 'rm_handoff' : 'loan_eligibility',
 });
 
 const TERMS = [
@@ -60,6 +60,8 @@ const SAFETY = [
 ];
 
 const TOPICS = [
+  // Advice about the shop as a whole. Money for the shop is a loan question, not this.
+  [(t) => (/\b(suggest\w*|advice|advise|tips?|insights?|improve|analy[sz]\w*|profile)\b.{0,40}\b(shop|store|business|sales|dukan|dukaan|kadai|paytm)\b|\b(shop|store|business|dukan|dukaan|kadai)\b.{0,30}\b(suggest\w*|advice|tips?|insights?|doing)\b|\bwhat should i (do|change|fix)\b.{0,30}\b(shop|store|business)\b/i).test(t) && !/\b(loan|money for|credit|capital|borrow\w*|stock)\b/i.test(t), 'merchant_insights', {}],
   [/\bhow much\b.{0,20}\b(did i|have i) (sell|sold|collect|collected)\b|\bhow (are|is) my (sales|business)\b|\bmy sales\b.{0,20}\b(this|last|so far|today)\b/i, 'merchant_sales_summary', {}],
   [/\b(fake|genuine|is (this|it) (real|safe))\b/i, 'check_payment_request', {}],
   [(t) => /\b(shop|store|soundbox|dukan|dukaan|kadai|merchant|stock|working capital|business loan|small business)\b/i.test(t) && !/\b(close|repay\w*|foreclos\w*|share market|shares?)\b/i.test(t), 'merchant_eligibility', {}],
@@ -72,6 +74,11 @@ const TOPICS = [
   [/\b(close|closing|closed|finish|foreclos\w*|settle|pay off|paying off|paid off|repay\w*)\b.{0,40}\b(early|penalty|fine|charges?|before|advance|ahead|first)\b|\b(penalty|fine|charges?)\b.{0,50}\b(early|close|closing|closed|foreclos\w*|prepay\w*|pre-?closure|repay\w*|repaid|in advance|ahead of)\b|\bearly\b.{0,30}\b(close|closure|repay\w*|repaid|settle\w*)\b|\bforeclos\w*|\bpre-?closure\b/i, 'foreclosure_question', offer],
   [/\b(i('?ll| will| want to)? (take|accept)|go ahead|proceed)\b.{0,30}\b(loan|offer)\b/i, 'record_loan_decision', { choice: 'take' }],
   [/\b(i don'?t want|won'?t take|walk away|not taking|decline)\b.{0,30}\b(loan|offer)\b/i, 'record_loan_decision', { choice: 'decline' }],
+
+  // Loan Clarity: trying other terms, and what the customer can afford. Before the
+  // loan rules below, because "what if I borrow 1 lakh for 36 months" names a loan too.
+  [/\bwhat if\b.{0,60}\b(months?|years?|yrs?|tenure|term|borrow\w*|take|lakhs?|thousand|amount|emi)\b|\b(longer|shorter|extend\w*|reduce|lower|smaller)\b.{0,20}\b(tenure|term|emi|instal\w*|loan)\b|\bchange (the|my) (tenure|term|amount|months)\b|\b(try|simulate)\b.{0,30}\b(months?|years?|terms?|amount)\b/i, 'simulate_terms', offer],
+  [/\b(can i afford|afford (this|the|that|a|my|it|an?) ?(loan|emi)?|how much (loan )?(can|could|will|should) i (\w+ )?(borrow|get|take)|how much loan|eligib\w*|safe emi|my (income|earnings) (papers|documents|statements?)|bank statements?|irregular income|gig (work|worker|job)|delivery (partner|rider|job)|no salary slip|(itr|tax return|gst return)\b)/i, 'check_affordability', offer],
 
   [/\b(free[- ]?look|return (a|the|my) policy|cancel (a|the|my) (policy|insurance))\b|\b(bought|purchased|took|taken)\b.{0,30}\b(floater|policy|plan|insurance)\b|\b(policy|insurance)\b.{0,50}\b(refund|money back|give (it )?back|return|don'?t want)\b/i, 'free_look_status', {}],
   [/\b(explain|compare|which|what|types?|kinds?|difference)\b.{0,30}\b(plans?|polic(y|ies))\b|\b(term plan|floater|top[- ]?up)\b|\bdifference\b.{0,30}\b(term|health|insurance)\b/i, 'explain_plans', {}],
@@ -91,6 +98,7 @@ const TOPICS = [
 
 // Used only when no model can be asked.
 const BROAD = [
+  [(t) => /\b(can i afford|earnings|bank statements?)\b|\b(income|earn\w*)\b.{0,40}\b(changes?|varies|irregular|every month|not fixed|up and down)\b/i.test(t) && !/\b(don'?t|do not|stop|remove|delete|withdraw)\b/i.test(t), 'check_affordability', offer],
   [/\b(loan|emi|kfs|apr|interest|lon|karz|kadan)\b/i, 'explain_loan_offer', offer],
   [/\b(insurance|policy|cover|bima)\b/i, 'protection_gap', {}],
   [/\bclaim\b/i, 'claim_checklist', {}],
@@ -114,8 +122,11 @@ export const ROUTER_SYSTEM_PROMPT = `You route one customer turn for MITRA, an A
 You never answer the customer. You never state or supply an amount, rate or date. Engines compute every figure.
 How to choose:
 - A loan they describe with an amount, rate or tenure, or a loan they want and ask about: explain_loan_offer.
+- How much they can borrow, whether they can afford a loan, a safe EMI, irregular gig or shop income, or their bank statements, receipts or tax return: check_affordability.
+- What changes with another amount or term, a lower EMI, or "what if" about the loan: simulate_terms.
 - Asking for a game, or to learn by playing: learn_by_playing.
 - A shopkeeper asking how much their shop sold or collected: merchant_sales_summary. A person asking for a loan is never this.
+- A shopkeeper asking how their business is doing overall, or for advice, tips or suggestions for the shop, from their Paytm data: merchant_insights. Money for the shop is merchant_eligibility.
 - Cancelling a loan they took or just signed, or how many days they have: cooling_off_status.
 - Spare money, bonus or savings: repay the loan, or put it in SIP, FD, gold or a fund: prepay_vs_invest.
 - Returning a policy they bought, or wanting a refund on it: free_look_status.

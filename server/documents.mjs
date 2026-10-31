@@ -2,6 +2,7 @@
 // fingerprint and the figures the customer confirms go on the receipt.
 import { createHash } from 'node:crypto';
 import { LOAN_DOCUMENT_SCHEMA } from '../src/journeys/documentRead.js';
+import { INCOME_DOCUMENT_SCHEMA } from '../src/journeys/incomeRead.js';
 import { sarvamKey } from './aiProxy.mjs';
 import { bump, countCall, watch } from './ops.mjs';
 
@@ -15,13 +16,13 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const fingerprint = (buffer) => createHash('sha256').update(buffer).digest('hex');
 
-export async function readLoanDocument(buffer, { name = 'document.pdf', mime = 'application/pdf' } = {}) {
+async function extract(buffer, { name = 'document.pdf', mime = 'application/pdf', schema, budgetMs = READ_BUDGET_MS }) {
   if (!ALLOWED.has(mime)) throw Object.assign(new Error('Send a PDF, JPG or PNG'), { status: 415 });
   if (buffer.length > MAX_DOCUMENT_BYTES) throw Object.assign(new Error('That file is larger than 10 MB'), { status: 413 });
   const started = Date.now();
   const form = new FormData();
   form.append('file', new Blob([buffer], { type: mime }), name.replace(/[^\w.-]/g, '_').slice(-60) || 'document.pdf');
-  form.append('schema', JSON.stringify(LOAN_DOCUMENT_SCHEMA));
+  form.append('schema', JSON.stringify(schema));
   form.append('output_format', 'json');
   const submitted = await watch('vision', () => fetch(`${BASE}/extract`, { method: 'POST', headers: headers(), body: form, signal: AbortSignal.timeout(20_000) }));
   if (!submitted.ok) {
@@ -30,7 +31,7 @@ export async function readLoanDocument(buffer, { name = 'document.pdf', mime = '
   }
   const { job_id: id } = await submitted.json();
   let status = null;
-  while (Date.now() - started < READ_BUDGET_MS) {
+  while (Date.now() - started < budgetMs) {
     await pause(700);
     const res = await fetch(`${BASE}/${id}/status`, { headers: headers(), signal: AbortSignal.timeout(8000) });
     if (!res.ok) continue;
@@ -47,3 +48,8 @@ export async function readLoanDocument(buffer, { name = 'document.pdf', mime = '
   bump('documentsRead');
   return { result: out.result, annotations: out.annotations, pages: out.usage?.pages_total ?? null, ms: Date.now() - started, partial: status.status === 'partially_completed' };
 }
+
+export const readLoanDocument = (buffer, options = {}) => extract(buffer, { ...options, schema: LOAN_DOCUMENT_SCHEMA });
+
+// A statement runs to several pages of rows, so it gets longer to read than a KFS.
+export const readIncomeDocument = (buffer, options = {}) => extract(buffer, { ...options, schema: INCOME_DOCUMENT_SCHEMA, budgetMs: 90_000 });
