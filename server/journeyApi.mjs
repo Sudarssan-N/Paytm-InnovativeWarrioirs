@@ -3,7 +3,7 @@
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { createSession, greeting, LANGUAGE_LABELS, takeTurn } from '../src/journeys/orchestrator.js';
+import { createSession, greeting, LANGUAGE_LABELS, resumeHandoffNumbers, takeTurn } from '../src/journeys/orchestrator.js';
 import { sealPassport, verifyChain } from '../src/journeys/passport.js';
 import { detectLanguage, scriptLanguage } from '../src/engine/languageDetect.js';
 import { isoDate } from '../src/journeys/money.js';
@@ -22,6 +22,7 @@ import { fingerprint, MAX_DOCUMENT_BYTES, readIncomeDocument, readLoanDocument }
 import { applyEdits, incomeReadBackLine, interpretIncomeDocument, profileFromDocuments } from '../src/journeys/incomeRead.js';
 import { grantConsent, recordFact } from '../src/journeys/consent.js';
 import { carriedIncome, carriedSpoken, customerFor, saveIncomeToAccount, userFromRequest } from './accounts.mjs';
+import { deskAgent, maskPhone, placeDeskCall, refreshDeskCall } from './deskCall.mjs';
 import { fetchStatements, linkLine, startLink, verifyLink } from './bankLink.mjs';
 import { agentSpeaker, checkPromises, findPromisesByRules, promiseLine } from '../src/journeys/engines/promises.js';
 import { freeLookStatus } from '../src/journeys/engines/insurance.js';
@@ -244,7 +245,12 @@ async function speakBack(result, session, trace, { modelOff, chaos }) {
   }
 }
 
+let numbersResumed = null;
+const resumeNumbers = () => (numbersResumed ||= readStore((db) => Object.values(db.journeySessions || {}).flatMap((item) => (item.handoffs || []).map((brief) => brief.id)))
+  .then(resumeHandoffNumbers).catch(() => {}));
+
 export async function runTurn(session, input) {
+  await resumeNumbers();
   const now = clockNow();
   const turnStarted = Date.now();
   const trace = [];
@@ -667,15 +673,90 @@ const OUTCOMES = {
   walked: { title: 'Customer walked away', action: 'Closed, nothing executed', say: (notes) => `Closed, as you asked, with no pressure. ${notes}` },
 };
 
-export async function resolveHandoff(briefId, { outcome, notes = '' }) {
+// Every case the desk can see: the saved journeys, with the ones in memory on top,
+// so a restart does not empty the queue. Erased journeys keep no brief.
+async function deskSessions() {
+  const stored = await readStore((db) => Object.values(db.journeySessions || {}));
+  const all = new Map(stored.filter((item) => !item.erasedAt && item.handoffs?.length).map((item) => [item.id, item]));
+  for (const item of [...dirty.values(), ...sessions.values()]) all.set(item.id, item);
+  return [...all.values()];
+}
+
+// What the RM sees beside the brief: the conversation up to the handover, and how
+// often this customer has needed a person. Worked out on each read, never stored.
+const deskContext = (session, brief, earlier, phones) => ({
+  phoneOnFile: maskPhone(phones[session.accountId]) || null,
+  lang: session.lang || 'en', customerId: session.customerId, kind: session.customer?.kind || 'customer', channel: session.channel, stage: session.stage,
+  receipts: session.chain?.length || 0, earlierCases: earlier,
+  conversation: (session.messages || []).filter((message) => message.at <= Date.parse(brief.createdAt) + 5000).slice(-12)
+    .map(({ from, english, native, lang, at }) => ({ from, english, native, lang, at })),
+});
+
+export async function deskBriefs() {
+  const all = (await deskSessions()).flatMap((session) => (session.handoffs || []).map((brief) => ({ session, brief })));
+  const phones = await accountPhones();
+  return all.map(({ session, brief }) => ({
+    ...brief,
+    calls: brief.calls?.map(publicDeskCall),
+    context: deskContext(session, brief, all.filter((other) => other.session.customerId === session.customerId && Date.parse(other.brief.createdAt) < Date.parse(brief.createdAt)).length, phones),
+  })).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+}
+
+// Account id to mobile number. Only the server sees whole numbers; the desk sees the last five digits.
+const accountPhones = () => readStore((db) => Object.fromEntries(Object.values(db.users || {}).filter((user) => user.phone).map((user) => [user.id, user.phone])));
+
+// The RM has MITRA's Sarvam voice agent ring the customer, as the customer page does.
+// The number comes from the customer's account; a demo customer's is typed in by the RM.
+export async function callFromDesk(briefId, { rm = '', customerPhone = '', lang = '', sessionId = null }, options) {
+  const name = String(rm).trim().slice(0, 60);
+  if (!name) throw Object.assign(new Error('Say who is asking for the call'), { status: 422 });
+  const { session, brief } = await sessionWithBrief(briefId, sessionId);
+  const onFile = session.accountId ? (await accountPhones())[session.accountId] : null;
+  const call = await placeDeskCall({ phone: onFile || customerPhone, name: brief.customerName || session.customer?.name || 'there', lang: lang || session.lang, brief, rm: name }, options);
+  brief.calls = [...(brief.calls || []), call];
+  brief.owner ||= { name, at: call.at };
+  await persist(session);
+  return { call: publicDeskCall(call) };
+}
+
+export async function deskCallStatus(briefId, callId, options, sessionId = null) {
+  const { session, brief } = await sessionWithBrief(briefId, sessionId);
+  const call = brief.calls?.find((item) => item.id === callId);
+  if (!call) throw Object.assign(new Error('Unknown call'), { status: 404 });
+  if (await refreshDeskCall(call, options)) await persist(session);
+  return { call: publicDeskCall(call) };
+}
+
+const publicDeskCall = ({ attemptId, polledAt, ...call }) => call;
+
+// Cases saved before ids were unique can share one, so the desk also names the journey.
+async function sessionWithBrief(briefId, sessionId = null) {
+  const found = (await deskSessions()).find((item) => (!sessionId || item.id === sessionId) && item.handoffs?.some((brief) => brief.id === briefId));
+  const session = found && await findSession(found.id);
+  if (!session) throw Object.assign(new Error('Unknown brief'), { status: 404 });
+  return { session, brief: session.handoffs.find((item) => item.id === briefId) };
+}
+
+// An RM takes a case, so two people do not call the same customer.
+export async function takeHandoff(briefId, { rm = '', sessionId = null }) {
+  const name = String(rm).trim().slice(0, 60);
+  if (!name) throw Object.assign(new Error('Say who is taking the case'), { status: 422 });
+  const { session, brief } = await sessionWithBrief(briefId, sessionId);
+  if (brief.status === 'closed') throw Object.assign(new Error('This case is already closed'), { status: 409 });
+  brief.owner = { name, at: new Date(clockNow()).toISOString() };
+  await persist(session);
+  return { brief };
+}
+
+export async function resolveHandoff(briefId, { outcome, notes = '', rm = '', sessionId = null }) {
   const spec = OUTCOMES[outcome];
   if (!spec) throw Object.assign(new Error('Unknown outcome'), { status: 422 });
-  const session = [...sessions.values()].find((item) => item.handoffs.some((brief) => brief.id === briefId));
-  if (!session) throw Object.assign(new Error('Unknown brief'), { status: 404 });
-  const brief = session.handoffs.find((item) => item.id === briefId);
+  const { session, brief } = await sessionWithBrief(briefId, sessionId);
   const now = clockNow();
+  if (String(rm).trim()) brief.closedBy = String(rm).trim().slice(0, 60);
   const cleanNotes = String(notes).trim().slice(0, 1000);
   brief.status = 'closed';
+  brief.closedAt = new Date(now).toISOString();
   brief.outcome = outcome;
   brief.notes = cleanNotes;
   session.stage = 'resolve';
@@ -741,9 +822,18 @@ export async function handleJourney(req, res, url) {
     }
 
     if (parts[0] === 'desk' && !deskAllowed(req)) return problem(res, 401, 'The expert desk needs a staff token');
-    if (req.method === 'GET' && parts[0] === 'desk') {
-      const briefs = [...sessions.values()].flatMap((session) => session.handoffs).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-      return json(res, 200, { briefs });
+    if (req.method === 'GET' && parts[0] === 'desk' && parts.length === 1) {
+      const agent = deskAgent();
+      return json(res, 200, { briefs: await deskBriefs(), calling: { ready: agent.configured, missing: agent.missing, ownAgent: agent.own } });
+    }
+    if (req.method === 'POST' && parts[0] === 'desk' && parts[2] === 'call' && parts.length === 3) {
+      return json(res, 201, await callFromDesk(parts[1], await readBody(req)));
+    }
+    if (req.method === 'GET' && parts[0] === 'desk' && parts[2] === 'call' && parts[3]) {
+      return json(res, 200, await deskCallStatus(parts[1], parts[3], undefined, url.searchParams.get('session')));
+    }
+    if (req.method === 'POST' && parts[0] === 'desk' && parts[2] === 'take') {
+      return json(res, 200, await takeHandoff(parts[1], await readBody(req)));
     }
     if (req.method === 'POST' && parts[0] === 'desk' && parts[2] === 'resolve') {
       return json(res, 200, await resolveHandoff(parts[1], await readBody(req)));

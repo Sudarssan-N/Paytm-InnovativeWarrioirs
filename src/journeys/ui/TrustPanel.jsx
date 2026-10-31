@@ -217,19 +217,19 @@ function Desk({ sessionId, onResolved }) {
   }, []);
 
   const mine = useMemo(() => briefs.filter((brief) => brief.sessionId === sessionId), [briefs, sessionId]);
-  if (!mine.length) return <p className="j-empty">When MITRA hands over, the expert sees the whole story here. The customer never repeats it.</p>;
+  if (!mine.length) return <p className="j-empty">When MITRA hands over, the RM sees the whole story here and on the <a href="/desk" target="_blank" rel="noreferrer">RM desk</a>. The customer never repeats it.</p>;
 
   const resolve = async (brief, outcome) => {
     setBusy(brief.id);
     try {
-      const out = await postJourney(`/desk/${brief.id}/resolve`, { outcome, notes: notes[brief.id] || '' });
+      const out = await postJourney(`/desk/${brief.id}/resolve`, { outcome, notes: notes[brief.id] || '', sessionId: brief.sessionId });
       onResolved?.(out.state);
     } finally { setBusy(null); }
   };
 
   return (
     <div className="j-desk">
-      <p className="j-eyebrow">The expert’s view</p>
+      <p className="j-eyebrow">The RM’s view · <a href="/desk" target="_blank" rel="noreferrer">Open the RM desk</a></p>
       {mine.map((brief) => (
         <div key={brief.id}>
           <HandoffBrief brief={brief} />
@@ -248,7 +248,7 @@ function Desk({ sessionId, onResolved }) {
   );
 }
 
-const TABS = [['trace', 'What happened'], ['passport', 'Passport'], ['consent', 'Consent'], ['desk', 'Expert desk'], ['paytm', 'Paytm'], ['ops', 'Ops']];
+const TABS = [['trace', 'What happened'], ['passport', 'Passport'], ['consent', 'Consent'], ['desk', 'RM desk'], ['paytm', 'Paytm'], ['ops', 'Ops']];
 
 export default function TrustPanel({ trace, state, onSend, onResolved, onErased, tab, onTab }) {
   const open = (state?.handoffs || []).filter((brief) => brief.status !== 'closed').length;

@@ -30,6 +30,11 @@ const REASON_WHY = {
 };
 
 let handoffSequence = 0;
+// The server calls this with the saved case ids after a restart, so numbering carries on
+// instead of starting again at 0001 and giving two cases the same id.
+export function resumeHandoffNumbers(ids) {
+  for (const id of ids) handoffSequence = Math.max(handoffSequence, Number(/-(\d+)$/.exec(id || '')?.[1]) || 0);
+}
 
 // `customer` comes from a signed-in account; without one, a demo customer by id.
 export function createSession({ id, customerId = 'ramesh', customer: given = null, channel = 'call', now = Date.now() }) {
@@ -256,8 +261,8 @@ function handoffResult({ session, reason, carry, turn, now, trace, modelOff }) {
   const opening = reason === 'hardship' ? 'I am sorry, that is hard, and you are right to ask early. ' : '';
   const closing = reason === 'hardship' ? ' Please talk to them before the next EMI.' : '';
   return {
-    reply: `${opening}I have passed this to an expert with everything we covered, so you will not have to repeat yourself. They will call you back today between 4 and 6 PM, in ${lang}.${closing}`,
-    replyHi: `${reason === 'hardship' ? 'मुझे दुख है, यह मुश्किल है। ' : ''}मैंने यह सब एक विशेषज्ञ को दे दिया है, आपको दोबारा कुछ नहीं बताना पड़ेगा। वे आज शाम 4 से 6 बजे के बीच आपको कॉल करेंगे।`,
+    reply: `${opening}I have passed this to your relationship manager, a person on our team, with everything we covered, so you will not have to repeat yourself. They will call you back today between 4 and 6 PM, in ${lang}.${closing}`,
+    replyHi: `${reason === 'hardship' ? 'मुझे दुख है, यह मुश्किल है। ' : ''}मैंने यह सब आपके रिलेशनशिप मैनेजर को दे दिया है, आपको दोबारा कुछ नहीं बताना पड़ेगा। वे आज शाम 4 से 6 बजे के बीच आपको कॉल करेंगे।`,
     card: { type: 'handoff', data: brief }, chips: ['That is all, thank you'],
     handoff: brief, agent: 'human', tool: 'handoff_to_human', journey: 'handoff', stage: 'handover', trace,
     computed: { brief, window: '4 6' },

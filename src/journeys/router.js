@@ -37,6 +37,8 @@ const SAFETY = [
   [(t) => /\b(already|just)\s+(paid|sent|transferred|gave)\b|\b(money|amount|rupees|paisa)\b.{0,30}\b(gone|debited|stolen|lost)\b|\b(i|we) (was|were|got|have been|am) (cheated|scammed|duped|fooled)\b/i.test(t) && SCAM_CONTEXT.test(t), 'fraud_emergency', {}],
   [/\b(lost|losing) (my |our )?(job|work|income)\b|\b(can'?t|cannot|can not|unable to|not able to|won'?t be able to)\b.{0,12}\b(pay|repay|afford)\b|\b(laid off|no money left|medical emergency)\b/i, 'handoff_to_human', { reason: 'hardship' }],
   [/\b(talk|speak|connect|put|transfer|call|get)\b.{0,30}\b(person|human|man|agent|advisor|adviser|expert|rm|someone|somebody|anyone|manager|representative|senior|real)\b|\b(real person|human please|insaan se|aadmi se|machine se)\b|\bis this a (recording|robot|machine)\b/i, 'handoff_to_human', { reason: 'asked' }],
+  // Asking for the RM, or to hand over or escalate, in any wording.
+  [/\b(hand\s?(?:over|off)|handoff|escalate|pass|transfer)\b.{0,30}\b(rm|relationship manager|person|human|expert|manager|agent|senior|someone|somebody)\b|\b(give|want|need)\b.{0,12}\b(an? |my |the )?(rm|relationship manager|human|real person|expert|manager)\b|\b(relationship manager|my rm|escalate)\b|\b(rm|manager|expert|insaan|aadmi)\b.{0,12}\b(bula\w*|chahiye|se baat)\b/i, 'handoff_to_human', { reason: 'asked' }],
   [/\b(surrender)\b.{0,30}\b(policy|plan)\b/i, 'handoff_to_human', { reason: 'irreversible' }],
   [/\b(claim)\b.{0,50}\b(rejected|denied|refused)\b|\b(rejected|denied|refused)\b.{0,50}\b(claim)\b/i, 'handoff_to_human', { reason: 'dispute' }],
 
@@ -136,6 +138,7 @@ How to choose:
 - A message or caller asking for money, OTP or PIN: check_payment_request.
 - Shares, stock tips, crypto, or anything else unrelated to loans, insurance, claims or payment safety: clarify_request.
 - Job loss, cannot pay, or anxious about money: handoff_to_human with reason hardship.
+- Asking for a person, a human, their RM or relationship manager, or to hand over or escalate: handoff_to_human with reason asked.
 Offer ids available: ${Object.keys(LOAN_OFFERS).join(', ')}. Consent purposes: ${Object.keys(PURPOSES).join(', ')}.`;
 
 // The model reads Indian languages itself, and machine translation of colloquial

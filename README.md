@@ -40,6 +40,7 @@ npm run preflight        # checks every stage on the real services
 | **Soundbox simulator** | Payment announcements and press-to-ask, for a shopkeeper | Bulbul, Saaras |
 | **Paytm link** | OAuth to Paytm's hosted MCP server, with token refresh. Real payment links | Paytm MCP. Sign-in pending |
 | **Business profile from Paytm** | Reads six months of orders, refunds, settlements and payment links through the MCP read tools. Profiles the shop and suggests what to look at: failing payments, refunds, falling sales, working capital, unpaid links, the rush hour. Live sales replace the sample in the merchant journey | Paytm MCP, deterministic insights engine |
+| **RM desk** | `/desk`: every case MITRA handed to a person, across customers. Most urgent first (scam or distress, then hardship, complaints, hard-to-undo steps), then longest wait. Filter by reason, language or text. The RM takes cases, reads the same brief and the conversation, and can have MITRA's Sarvam voice agent call the customer, with the result and transcript coming back to the case. The RM adds notes and closes the case; the outcome is sealed on the customer's Passport and sent to them in their language | `src/journeys/ui/RmDesk.jsx`, `/api/journey/desk` |
 | **Ops tab** | Latency, estimated cost per turn, fence counts and circuit breakers | `/api/ops/metrics` |
 
 Details: [how each Sarvam product is used and measured](docs/SARVAM_STACK.md), [what production needs](docs/PRODUCTION.md), [how it fits Paytm](docs/PAYTM_INTEGRATION.md).

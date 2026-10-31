@@ -31,7 +31,7 @@ const HIGHEST_COVER = 50000000;
 const COVER_YEARS_OF_INCOME = 100;
 const stillReading = (call, now = Date.now()) => call.status === 'connected' && !call.decided && !heardAnything(call.details) && now - (call.endedAt || now) < READING_MS;
 
-const LANGUAGE = { en: 'English', hi: 'Hindi', ta: 'Tamil', te: 'Telugu', kn: 'Kannada', ml: 'Malayalam', mr: 'Marathi', bn: 'Bengali', gu: 'Gujarati', pa: 'Punjabi', od: 'Odia' };
+export const LANGUAGE = { en: 'English', hi: 'Hindi', ta: 'Tamil', te: 'Telugu', kn: 'Kannada', ml: 'Malayalam', mr: 'Marathi', bn: 'Bengali', gu: 'Gujarati', pa: 'Punjabi', od: 'Odia' };
 const LANG_BY_NAME = Object.fromEntries(Object.entries(LANGUAGE).map(([code, name]) => [name.toLowerCase(), code]));
 const WORK_WORDS = [['gig', /\b(gig|deliver|driv|rider|freelanc|cab|auto)/i], ['shop', /\b(shop|store|kirana|business|stall|trade|dukan)/i], ['salaried', /\b(salar|job|employ|office)/i], ['other', /\b(other|else)/i]];
 
@@ -121,7 +121,7 @@ function normaliseStatus(status, endedBy) {
   return 'failed';
 }
 
-const plainFailure = (reason) => {
+export const plainFailure = (reason) => {
   const text = String(reason || '');
   if (/NDNC|DND/i.test(text)) return 'This number is on the Do Not Disturb list, so it cannot be called.';
   return text ? 'The call could not be placed. Please try again in a little while.' : null;
@@ -263,7 +263,7 @@ export async function recordWebhook(payload) {
   });
 }
 
-async function pollAttempts(settings, since, fetcher) {
+export async function pollAttempts(settings, since, fetcher) {
   const query = new URLSearchParams({
     start_datetime: new Date(since - 300_000).toISOString(), end_datetime: new Date(Date.now() + 60_000).toISOString(),
     sort_by: 'attempted_at', sort_order: 'desc', limit: '100',
@@ -275,7 +275,7 @@ async function pollAttempts(settings, since, fetcher) {
   return (await res.json()).items || [];
 }
 
-async function transcriptFor(settings, interactionId, fetcher) {
+export async function transcriptFor(settings, interactionId, fetcher) {
   try {
     const res = await fetcher(`${settings.base}/analytics/v1/${settings.org}/${settings.workspace}/${settings.appId}/transcripts/${interactionId}`, {
       headers: { 'x-api-key': settings.key }, signal: AbortSignal.timeout(15000),

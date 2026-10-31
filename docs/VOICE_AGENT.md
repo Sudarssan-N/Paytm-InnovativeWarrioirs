@@ -72,6 +72,17 @@ heard shown beside it, when more than 12 people depend on the income, when month
 figures, or the outcome `answers_doubtful`, also put a warning above the form. The customer can still
 type a real figure in. These limits are our own judgement, not a rule from a regulator.
 
+## From the RM desk
+
+On a case at `/desk`, **Call customer** has the same agent ring the customer (`server/deskCall.mjs`), in the
+language the RM picks. The number comes from the customer's account, and the desk sees only its last five digits;
+for a demo customer the RM types it. The result, the call length and the transcript come back to the case by
+polling Sarvam, about every five seconds while the call is on. A case allows five calls a day, one at a time.
+
+Until a follow-up agent made for RMs is set up on Sarvam (`SARVAM_RM_APP_ID`, `SARVAM_RM_APP_VERSION`), the
+desk uses the onboarding agent, so the customer hears the onboarding questions. A follow-up agent also gets
+`rm_name`, `case_id`, `case_reason`, `customer_question` and `next_step`.
+
 ## Not yet safe for real customers
 
 The number is not proven to belong to the customer, because the app sends no SMS. Someone could enter
